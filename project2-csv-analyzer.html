@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CSV Data Analyzer — Fahim Al Efaji</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --accent: #58a6ff; --green: #3fb950; --yellow: #d29922;
+    --text: #e6edf3; --muted: #8b949e; --purple: #bc8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header { padding: 1.5rem 2.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; }
+  .logo span { color: var(--accent); }
+  .badge { font-family: 'DM Mono', monospace; font-size: 0.7rem; background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3); color: var(--accent); padding: 0.35rem 0.8rem; border-radius: 100px; letter-spacing: 0.06em; }
+
+  .main { padding: 2rem 2.5rem; max-width: 1300px; margin: 0 auto; }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: 16px;
+    padding: 3rem; text-align: center; cursor: pointer;
+    transition: all 0.3s; margin-bottom: 2rem; position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(88,166,255,0.05); }
+  .upload-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+  .upload-title { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .upload-sub { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.06em; }
+  .upload-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .btn-sample { display: inline-block; margin-top: 1.2rem; background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3); color: var(--accent); font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 0.06em; padding: 0.5rem 1.2rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+  .btn-sample:hover { background: rgba(88,166,255,0.2); }
+
+  /* HIDDEN UNTIL DATA LOADED */
+  .analysis-area { display: none; }
+  .analysis-area.show { display: block; }
+
+  /* STATS GRID */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; }
+  .stat-label { font-family: 'DM Mono', monospace; font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+  .stat-val { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+  .stat-sub { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 0.3rem; }
+
+  /* COLUMN SELECTOR */
+  .col-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; margin-bottom: 2rem; }
+  .col-title { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; margin-bottom: 1rem; }
+  .col-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .col-btn { font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.05em; padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.2s; }
+  .col-btn.active { background: rgba(88,166,255,0.15); border-color: var(--accent); color: var(--accent); }
+  .col-btn.numeric { border-color: rgba(63,185,80,0.4); color: var(--green); }
+  .col-btn.numeric.active { background: rgba(63,185,80,0.15); }
+
+  /* CHARTS */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; }
+  .chart-title { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .chart-sub { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-bottom: 1rem; letter-spacing: 0.05em; }
+  .chart-wrap { position: relative; height: 200px; }
+
+  /* COLUMN STATS TABLE */
+  .col-stats { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; margin-bottom: 2rem; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0.7rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+  td { font-size: 0.875rem; padding: 0.7rem 1rem; border-bottom: 1px solid rgba(48,54,61,0.5); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .num-cell { font-family: 'DM Mono', monospace; font-size: 0.82rem; }
+
+  /* DATA PREVIEW */
+  .preview-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; }
+  .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .preview-title { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; }
+  .preview-table-wrap { overflow: auto; max-height: 280px; }
+  .preview-table th { position: sticky; top: 0; background: var(--surface); z-index: 1; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">CSV<span>.</span>Analyzer</div>
+  <div style="display:flex;align-items:center;gap:1rem">
+    <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted)">by Fahim Al Efaji</span>
+    <div class="badge">Data Analysis Tool</div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- UPLOAD -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" accept=".csv" class="upload-input" id="fileInput" onchange="handleFile(this.files[0])"/>
+    <div class="upload-icon">📂</div>
+    <div class="upload-title">Drop your CSV file here</div>
+    <div class="upload-sub">Supports any CSV — auto-detects columns, types & stats</div>
+    <div class="btn-sample" onclick="loadSample(event)">← Load Sample Dataset (Sales Data)</div>
+  </div>
+
+  <!-- ANALYSIS AREA -->
+  <div class="analysis-area" id="analysisArea">
+    <!-- STATS -->
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- COLUMN SELECTOR -->
+    <div class="col-section">
+      <div class="col-title">📋 Columns Detected <span id="colTypeNote" style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);font-weight:400"></span></div>
+      <div class="col-list" id="colList"></div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Distribution</div>
+        <div class="chart-sub" id="distSubtitle">Select a numeric column</div>
+        <div class="chart-wrap"><canvas id="distChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Top Categories</div>
+        <div class="chart-sub" id="catSubtitle">Select a text column</div>
+        <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- COLUMN STATS -->
+    <div class="col-stats">
+      <div style="font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:1rem">📊 Column Statistics</div>
+      <div class="table-scroll"><table id="statsTable">
+        <thead><tr><th>Column</th><th>Type</th><th>Non-Null</th><th>Unique</th><th>Min</th><th>Max</th><th>Mean</th><th>Most Common</th></tr></thead>
+        <tbody id="statsBody"></tbody>
+      </table></div>
+    </div>
+
+    <!-- DATA PREVIEW -->
+    <div class="preview-section">
+      <div class="preview-header">
+        <div class="preview-title">🗃 Data Preview</div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)" id="previewCount"></div>
+      </div>
+      <div class="preview-table-wrap">
+        <table class="preview-table"><thead id="previewHead"></thead><tbody id="previewBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let parsedData = [], headers = [], selectedNumCol = null, selectedCatCol = null;
+let distChartInst, catChartInst;
+
+const SAMPLE_CSV = `Month,Product,Category,Region,Units_Sold,Unit_Price,Revenue,Cost,Profit
+Jan,Laptop Pro,Electronics,North,120,899,107880,72000,35880
+Jan,Wireless Mouse,Accessories,South,340,29,9860,4200,5660
+Jan,USB Hub,Accessories,East,210,45,9450,3900,5550
+Feb,Laptop Pro,Electronics,East,98,899,88102,65660,22442
+Feb,Monitor 24",Electronics,North,75,320,24000,13500,10500
+Feb,Keyboard MX,Accessories,West,180,89,16020,8640,7380
+Mar,Laptop Pro,Electronics,South,145,899,130355,97150,33205
+Mar,Wireless Mouse,Accessories,North,420,29,12180,5460,6720
+Mar,USB Hub,Accessories,West,280,45,12600,5320,7280
+Apr,Monitor 24",Electronics,South,90,320,28800,16200,12600
+Apr,Keyboard MX,Accessories,East,230,89,20470,11040,9430
+Apr,Laptop Pro,Electronics,West,110,899,98890,73700,25190
+May,Webcam HD,Electronics,North,195,79,15405,7800,7605
+May,Laptop Pro,Electronics,North,130,899,116870,87100,29770
+May,Wireless Mouse,Accessories,East,380,29,11020,4940,6080
+Jun,Monitor 24",Electronics,West,88,320,28160,15840,12320
+Jun,USB Hub,Accessories,South,320,45,14400,6080,8320
+Jun,Webcam HD,Electronics,East,215,79,16985,8600,8385`;
+
+function loadSample(e) {
+  e.stopPropagation();
+  parseCSV(SAMPLE_CSV, 'sample_sales_data.csv');
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => parseCSV(e.target.result, file.name);
+  reader.readAsText(file);
+}
+
+function parseCSV(text, filename) {
+  const lines = text.trim().split('\n');
+  headers = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+  parsedData = lines.slice(1).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/"/g,''));
+    const row = {};
+    headers.forEach((h,i) => { row[h] = vals[i] || ''; });
+    return row;
+  }).filter(r => Object.values(r).some(v => v !== ''));
+
+  document.getElementById('uploadZone').style.display = 'none';
+  document.getElementById('analysisArea').classList.add('show');
+  renderAll(filename);
+}
+
+function isNumeric(col) {
+  const vals = parsedData.map(r => r[col]).filter(v => v !== '');
+  return vals.filter(v => !isNaN(parseFloat(v))).length > vals.length * 0.7;
+}
+
+function renderAll(filename) {
+  const numCols = headers.filter(isNumeric);
+  const catCols = headers.filter(h => !isNumeric(h));
+
+  // Stats grid
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">File</div><div class="stat-val" style="font-size:1rem">${filename}</div></div>
+    <div class="stat-card"><div class="stat-label">Rows</div><div class="stat-val">${parsedData.length.toLocaleString()}</div><div class="stat-sub">data records</div></div>
+    <div class="stat-card"><div class="stat-label">Columns</div><div class="stat-val">${headers.length}</div><div class="stat-sub">${numCols.length} numeric · ${catCols.length} text</div></div>
+    <div class="stat-card"><div class="stat-label">Completeness</div><div class="stat-val" style="color:var(--green)">${Math.round((parsedData.filter(r=>Object.values(r).every(v=>v!=='')).length/parsedData.length)*100)}%</div><div class="stat-sub">no missing values</div></div>
+  `;
+
+  // Column buttons
+  document.getElementById('colTypeNote').textContent = `· ${numCols.length} numeric (green) · ${catCols.length} text`;
+  document.getElementById('colList').innerHTML = headers.map(h =>
+    `<button class="col-btn ${isNumeric(h)?'numeric':''}" onclick="selectCol('${h}')" id="btn_${h.replace(/[^a-z0-9]/gi,'_')}">${h}</button>`
+  ).join('');
+
+  // Column stats table
+  document.getElementById('statsBody').innerHTML = headers.map(h => {
+    const vals = parsedData.map(r => r[h]).filter(v => v !== '');
+    const numVals = vals.map(v=>parseFloat(v)).filter(v=>!isNaN(v));
+    const freq = {}; vals.forEach(v => freq[v]=(freq[v]||0)+1);
+    const most = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+    const unique = new Set(vals).size;
+    return `<tr>
+      <td><strong>${h}</strong></td>
+      <td><span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:${isNumeric(h)?'var(--green)':'var(--purple)'}">${isNumeric(h)?'numeric':'text'}</span></td>
+      <td class="num-cell">${vals.length}</td>
+      <td class="num-cell">${unique}</td>
+      <td class="num-cell">${numVals.length?Math.min(...numVals).toFixed(2):'—'}</td>
+      <td class="num-cell">${numVals.length?Math.max(...numVals).toFixed(2):'—'}</td>
+      <td class="num-cell">${numVals.length?(numVals.reduce((a,b)=>a+b,0)/numVals.length).toFixed(2):'—'}</td>
+      <td style="font-size:0.8rem;color:var(--muted)">${most?most[0]:'-'} <span style="font-family:'DM Mono',monospace;font-size:0.65rem">(${most?most[1]:0}×)</span></td>
+    </tr>`;
+  }).join('');
+
+  // Data preview
+  document.getElementById('previewCount').textContent = `Showing first 8 of ${parsedData.length} rows`;
+  document.getElementById('previewHead').innerHTML = '<tr>' + headers.map(h=>`<th>${h}</th>`).join('') + '</tr>';
+  document.getElementById('previewBody').innerHTML = parsedData.slice(0,8).map(row =>
+    '<tr>' + headers.map(h=>`<td>${row[h]||'—'}</td>`).join('') + '</tr>'
+  ).join('');
+
+  // Auto-select first numeric and first cat col
+  if (numCols[0]) selectCol(numCols[0]);
+  if (catCols[0]) selectCol(catCols[0]);
+}
+
+function selectCol(col) {
+  const btnId = 'btn_' + col.replace(/[^a-z0-9]/gi,'_');
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  if (isNumeric(col)) {
+    document.querySelectorAll('.col-btn.numeric').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedNumCol = col; renderDistChart(col);
+  } else {
+    document.querySelectorAll('.col-btn:not(.numeric)').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedCatCol = col; renderCatChart(col);
+  }
+}
+
+function renderDistChart(col) {
+  const vals = parsedData.map(r=>parseFloat(r[col])).filter(v=>!isNaN(v));
+  const min=Math.min(...vals), max=Math.max(...vals), bins=10;
+  const step=(max-min)/bins;
+  const counts=Array(bins).fill(0);
+  const labels=[];
+  for(let i=0;i<bins;i++) labels.push((min+i*step).toFixed(1));
+  vals.forEach(v=>{ let b=Math.min(Math.floor((v-min)/step),bins-1); counts[b]++; });
+  document.getElementById('distSubtitle').textContent = col + ' — histogram';
+  if(distChartInst) distChartInst.destroy();
+  distChartInst = new Chart(document.getElementById('distChart'),{
+    type:'bar', data:{labels, datasets:[{data:counts, backgroundColor:'rgba(88,166,255,0.6)', borderColor:'rgba(88,166,255,0.9)', borderWidth:1, borderRadius:4, borderSkipped:false}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{family:'DM Mono',size:9}}, grid:{color:'#21262d'}}, y:{ticks:{font:{family:'DM Mono',size:9}}, grid:{color:'#21262d'}}}}
+  });
+}
+
+function renderCatChart(col) {
+  const freq={};
+  parsedData.forEach(r=>{ const v=r[col]||'(empty)'; freq[v]=(freq[v]||0)+1; });
+  const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const palette=['#58a6ff','#3fb950','#bc8cff','#f78166','#d29922','#56d364','#ff7b72','#79c0ff'];
+  document.getElementById('catSubtitle').textContent = col + ' — top values';
+  if(catChartInst) catChartInst.destroy();
+  catChartInst = new Chart(document.getElementById('catChart'),{
+    type:'bar', data:{labels:sorted.map(e=>e[0]), datasets:[{data:sorted.map(e=>e[1]), backgroundColor:palette, borderRadius:4, borderSkipped:false}]},
+    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{family:'DM Mono',size:9}}, grid:{color:'#21262d'}}, y:{ticks:{font:{family:'DM Mono',size:9}}, grid:{display:false}}}}
+  });
+}
+
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag')});
+zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
+zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
+</script>
+</body>
+</html>
