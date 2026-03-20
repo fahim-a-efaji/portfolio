@@ -143,7 +143,7 @@
   <div class="hero-glow2"></div>
   <div class="hero-content">
     <div class="hero-tag">Open to Opportunities</div>
-    <h1>Md Fahim<br/><span class="line2">Al Efaji</span></h1>
+    <h1>MD Fahim<br/><span class="line2">Al Efaji</span></h1>
     <p class="hero-desc">Analytics Engineer at ExxonMobil Hungary — building intelligent data pipelines, AI-powered audit solutions, and enterprise dashboards that turn raw data into decisions.</p>
     <div class="hero-actions">
       <a href="#projects" class="btn-primary">↓ View Projects</a>
@@ -301,7 +301,7 @@
       <div class="availability-badge">Available for opportunities</div>
     </div>
     <div class="contact-info reveal">
-      <a id="emailLink" href="#" class="contact-item"><div class="contact-item-icon">✉️</div><div><div class="contact-item-label">Email</div><div class="contact-item-val" id="emailDisplay"></div></div></a>
+      <div class="contact-item" id="emailCard" style="cursor:pointer" onclick="window.location=this.dataset.h"><div class="contact-item-icon">✉️</div><div><div class="contact-item-label">Email</div><div class="contact-item-val" id="emailDisplay">fahim007alefaji&#x40;gmail&#x2E;com</div></div></div>
       <a href="tel:+36704077007" class="contact-item"><div class="contact-item-icon">📞</div><div><div class="contact-item-label">Phone</div><div class="contact-item-val">+36 70 407 7007</div></div></a>
       <a href="https://www.linkedin.com/in/fahim-al-efaji" target="_blank" class="contact-item"><div class="contact-item-icon">💼</div><div><div class="contact-item-label">LinkedIn</div><div class="contact-item-val">linkedin.com/in/fahim-al-efaji</div></div></a>
       <div class="contact-item"><div class="contact-item-icon">📍</div><div><div class="contact-item-label">Location</div><div class="contact-item-val">Budapest, Hungary</div></div></div>
@@ -327,12 +327,9 @@
 
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
   // Render email safely (bypass Cloudflare obfuscation)
-  const u = 'fahim007alefaji', d = 'gmail.com';
-  const email = u + '@' + d;
-  const el = document.getElementById('emailDisplay');
-  const link = document.getElementById('emailLink');
-  if(el) el.textContent = email;
-  if(link) link.href = 'mailto:' + email;
+  // Render email click handler
+  const emailCard = document.getElementById('emailCard');
+  if(emailCard) emailCard.dataset.h = ['mailto:fahim007alefaji','gmail.com'].join('@');
 
   // SCROLL REVEAL — only animate if not inside an iframe
   const reveals = document.querySelectorAll('.reveal');
