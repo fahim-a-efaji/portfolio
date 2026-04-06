@@ -1,0 +1,101 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.4rem;
+}
+
+.card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: border-color 0.25s, transform 0.25s;
+}
+
+.card:hover {
+  border-color: rgba(34, 211, 238, 0.3);
+  transform: translateY(-5px);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.3rem 1.3rem 0.8rem;
+}
+
+.icon {
+  font-size: 1.7rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* shared project button style */
+.projBtn {
+  font-size: 0.78rem;
+  padding: 0.28rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.22s;
+  white-space: nowrap;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.projBtn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.projBtn.primary {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: #050609;
+  font-weight: 700;
+}
+
+.projBtn.primary:hover {
+  background: #67e8f9;
+}
+
+.body {
+  padding: 0 1.3rem 1.3rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.body h3 {
+  font-weight: 700;
+  font-size: 0.98rem;
+  margin-bottom: 0.35rem;
+}
+
+.metric {
+  font-size: 0.75rem;
+  color: var(--cyan);
+  margin-bottom: 0.65rem;
+  opacity: 0.85;
+}
+
+.desc {
+  font-size: 0.87rem;
+  color: var(--muted);
+  margin-bottom: 0.9rem;
+  line-height: 1.65;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .grid { grid-template-columns: 1fr; }
+}
