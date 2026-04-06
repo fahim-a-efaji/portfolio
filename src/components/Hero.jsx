@@ -29,8 +29,8 @@ export default function Hero({ onNav }) {
           <span className={styles.typed} aria-live="polite">{typed}</span>
           <span className={styles.cursor} aria-hidden="true" />
           <br />
-          Building intelligent data pipelines, AI-powered audit solutions, and
-          enterprise dashboards that turn raw data into decisions.
+          Analyzing financial and operational data to deliver actionable insights —
+          through ETL pipelines, Power BI dashboards, and AI-assisted analytics.
         </p>
 
         {/* CTAs */}
@@ -41,6 +41,13 @@ export default function Hero({ onNav }) {
           >
             ↓ View Projects
           </button>
+          <a
+            className="btn btn-outline"
+            href="/portfolio/Fahim_Al_Efaji_CV.pdf"
+            download
+          >
+            ↓ Download CV
+          </a>
           <button
             className="btn btn-outline"
             onClick={() => onNav('contact')}

@@ -25,7 +25,14 @@ export default function Skills() {
               className={`${styles.card} fu d${i % 5}`}
               ref={ref(i + 1)}
             >
-              <div className={styles.icon} aria-hidden="true">{skill.icon}</div>
+              <div className={styles.cardHeader}>
+                <div className={styles.icon} aria-hidden="true">{skill.icon}</div>
+                {skill.proficiency && (
+                  <span className={`${styles.profBadge} ${styles[`prof${skill.proficiency}`]}`}>
+                    {skill.proficiency}
+                  </span>
+                )}
+              </div>
               <h3>{skill.title}</h3>
               <div className="tags">
                 {skill.tags.map((tag) => (

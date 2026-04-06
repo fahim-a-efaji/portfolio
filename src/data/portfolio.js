@@ -1,11 +1,10 @@
 // ─── Typed roles cycling in hero ────────────────────────────────────────────
 export const ROLES = [
-  'Analytics Engineer',
   'Data Analyst',
-  'Data Pipeline Builder',
-  'Azure & AI Specialist',
+  'Analytics Engineer',
   'Power BI Developer',
-  'ETL Architect',
+  'BI & Analytics Specialist',
+  'Data Pipeline Builder',
 ]
 
 // ─── Hero stats ──────────────────────────────────────────────────────────────
@@ -22,36 +21,42 @@ export const SKILLS = [
     icon: '🗄️',
     title: 'Data & Analytics',
     color: 'cyan',
+    proficiency: 'Expert',
     tags: ['SQL Server', 'Snowflake', 'Python', 'ETL/ELT', 'Data Modeling', 'Data Warehousing', 'SAP', 'Excel'],
   },
   {
     icon: '📊',
     title: 'BI & Visualization',
     color: 'amber',
+    proficiency: 'Expert',
     tags: ['Power BI', 'DAX', 'KPI Analysis', 'Dashboard Dev', 'Data Visualization'],
   },
   {
     icon: '☁️',
     title: 'Cloud & AI',
     color: 'violet',
+    proficiency: 'Proficient',
     tags: ['Microsoft Azure', 'Azure SQL', 'Azure OpenAI', 'Generative AI', 'OpenShift'],
   },
   {
     icon: '🔁',
     title: 'DevOps & CI/CD',
     color: 'cyan',
+    proficiency: 'Proficient',
     tags: ['GitHub Actions', 'Azure DevOps', 'CI/CD', 'OpenShift', 'GitHub'],
   },
   {
     icon: '⚙️',
     title: 'Automation',
     color: 'amber',
+    proficiency: 'Proficient',
     tags: ['Power Platform', 'Nintex', 'SharePoint', 'OutSystems'],
   },
   {
     icon: '🌐',
     title: 'Web Development',
     color: 'violet',
+    proficiency: 'Familiar',
     tags: ['React', 'Node.js', 'TypeScript', 'HTML5', 'CSS', '.NET'],
   },
 ]
@@ -90,14 +95,14 @@ export const EDUCATION = {
 }
 
 // ─── Projects ────────────────────────────────────────────────────────────────
-export const PROJECTS_NOTE = `My day-to-day work at ExxonMobil runs on proprietary enterprise systems and confidential data I cannot share publicly. Rather than leave this portfolio empty, I used AI as a tool to help recreate the concepts, architectures, and techniques I apply daily — translating real professional experience into shareable, interactive demos. The domain knowledge, problem-solving approach, and technical direction are entirely mine; AI accelerated the build. I believe transparency about this reflects both integrity and a practical understanding of how modern professionals work.`
+export const PROJECTS_NOTE = `My day-to-day work at ExxonMobil runs on proprietary enterprise systems and confidential data I cannot share publicly. Each demo below is a faithful recreation of the real architectures, techniques, and business problems I work with daily — built on synthetic data to protect confidentiality. The domain knowledge, analytical approach, and technical design are entirely mine.`
 
 export const PROJECTS = [
   {
     icon: '⚙️',
     title: 'ETL Pipeline Monitor',
     metric: 'Live pipeline stages · Run log · 24h row charts · Terminal output',
-    desc: 'A real-time ETL monitoring dashboard showing pipeline stages, row counts, run history, error tracking, and live log output — mirrors the Python+SQL+Snowflake pipelines built at ExxonMobil.',
+    desc: 'Audit data was scattered across Snowflake, Azure SQL, and MS SQL Server with no unified view. Built a real-time ETL monitoring dashboard tracking pipeline stages, row counts, run history, and errors — improving audit data access by 60% and cutting manual prep by 40%.',
     tags: ['Python', 'SQL Server', 'Snowflake', 'Azure', 'ETL/ELT'],
     color: 'cyan',
     file: 'projects/project1-etl-pipeline.html',
@@ -106,7 +111,7 @@ export const PROJECTS = [
     icon: '🔍',
     title: 'Financial Anomaly Detection Dashboard',
     metric: 'Z-score detection · DAX measures · Power BI-style KPIs · 23 anomalies flagged',
-    desc: 'Power BI-style dashboard with Z-score anomaly detection, flagged transaction table, DAX measure code, and Python detection logic — direct replica of ExxonMobil Global Audit work.',
+    desc: 'Audit teams manually reviewed thousands of transactions to find irregularities. Built a Power BI dashboard with Z-score anomaly detection, flagged transaction drill-through, and DAX measures — automating financial monitoring and reducing analyst review time significantly.',
     tags: ['Power BI', 'DAX', 'Python', 'Z-Score', 'Audit Analytics'],
     color: 'amber',
     file: 'projects/project2-anomaly-dashboard.html',
@@ -115,7 +120,7 @@ export const PROJECTS = [
     icon: '🗃️',
     title: 'SQL Data Modeling Showcase',
     metric: 'Star schema · Window functions · Recursive CTEs · Index strategy',
-    desc: 'Interactive SQL showcase with a full Snowflake star schema, 5 advanced query patterns (window functions, CTEs, dynamic PIVOT, anomaly detection), and index performance comparison.',
+    desc: 'Raw transactional data needed to be queryable for financial reporting and audit. Designed a Snowflake star schema with 5 advanced query patterns — window functions, recursive CTEs, dynamic PIVOT, and index strategy — making analytics-ready data available for downstream BI tools.',
     tags: ['SQL Server', 'Snowflake', 'Star Schema', 'CTEs', 'Data Modeling'],
     color: 'violet',
     file: 'projects/project3-sql-modeling.html',
@@ -124,7 +129,7 @@ export const PROJECTS = [
     icon: '🐍',
     title: 'Python Data Pipeline — Live Output',
     metric: 'Step-by-step execution · df.info() · df.head() · Live charts',
-    desc: 'Full Python ETL pipeline with actual pandas/scipy code, step-by-step execution animation, live terminal output, DataFrame inspection, and automatic chart generation.',
+    desc: 'Source data arrived dirty — nulls, outliers, and inconsistent formats blocking downstream reports. Built a Python ETL pipeline using pandas and scipy with step-by-step execution, DataFrame inspection, and auto-generated quality charts — the same pattern used across ExxonMobil audit pipelines.',
     tags: ['Python', 'pandas', 'scipy', 'ETL', 'Data Cleaning'],
     color: 'cyan',
     file: 'projects/project4-python-pipeline.html',
@@ -133,7 +138,7 @@ export const PROJECTS = [
     icon: '🚀',
     title: 'CI/CD Pipeline Visualizer',
     metric: 'Animated GitHub Actions · Stage-by-stage execution · Simulate success & failure',
-    desc: 'Interactive animated CI/CD pipeline: checkout → lint → test → build → push → deploy. Simulate success or failure with live log streaming and job runner breakdown.',
+    desc: 'Manual deployments were slow and error-prone across Azure and OpenShift environments. Implemented GitHub Actions CI/CD automating checkout → lint → test → build → push → deploy — reducing release time by 50% and deployment errors by 35%.',
     tags: ['GitHub Actions', 'Azure DevOps', 'OpenShift', 'CI/CD', 'DevOps'],
     color: 'amber',
     file: 'projects/project5-cicd-pipeline.html',
@@ -142,8 +147,8 @@ export const PROJECTS = [
     icon: '🤖',
     title: 'Chat with Your Data — AI Assistant',
     metric: 'NL → SQL → Chart · Azure OpenAI · 30% faster analysis',
-    desc: 'Natural language to SQL to chart pipeline — the exact system built at ExxonMobil for Global Audit using Azure OpenAI, reducing analysis time by 30% and improving audit coverage to 94.7%.',
-    tags: ['Claude API', 'Azure OpenAI', 'RAG', 'NLP', 'Financial Audit'],
+    desc: 'Audit analysts needed to query financial data without writing SQL. Implemented an Azure OpenAI "Chat with Your Data" system translating natural language to SQL to chart — reducing analysis time by 30% and enabling broader audit coverage across global datasets.',
+    tags: ['Azure OpenAI', 'RAG', 'NLP', 'Financial Audit', 'AI Analytics'],
     color: 'violet',
     file: 'projects/project6-ai-chat.html',
   },
@@ -151,8 +156,9 @@ export const PROJECTS = [
 
 // ─── Contact info ─────────────────────────────────────────────────────────────
 export const CONTACT = [
-  { icon: '✉️', label: 'Email',    value: 'fahim.a.efaji@gmail.com',              href: 'mailto:fahim.a.efaji@gmail.com' },
+  { icon: '✉️', label: 'Email',    value: 'fahim007alefaji@gmail.com',            href: 'mailto:fahim007alefaji@gmail.com' },
   { icon: '📞', label: 'Phone',    value: '+36 70 407 7007',                       href: 'tel:+36704077007' },
   { icon: '💼', label: 'LinkedIn', value: 'linkedin.com/in/fahim-al-efaji',        href: 'https://www.linkedin.com/in/fahim-al-efaji' },
+  { icon: '🐙', label: 'GitHub',   value: 'github.com/fahim-a-efaji',             href: 'https://github.com/fahim-a-efaji' },
   { icon: '📍', label: 'Location', value: 'Budapest, Hungary',                     href: null },
 ]
