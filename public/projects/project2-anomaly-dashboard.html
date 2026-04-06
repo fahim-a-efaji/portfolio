@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Financial Anomaly Detection Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#050609;color:#e8edf5;padding:2rem 1.5rem}
+h1{font-size:1.5rem;font-weight:800;color:#fbbf24;margin-bottom:.25rem}
+.sub{color:#7a8496;font-size:.85rem;margin-bottom:2rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+.kpi{background:#13151d;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1rem 1.2rem}
+.kpi-label{font-size:.72rem;color:#7a8496;margin-bottom:.3rem}
+.kpi-val{font-size:1.6rem;font-weight:800}
+.cyan{color:#22d3ee}.amber{color:#fbbf24}.red{color:#f87171}.green{color:#34d399}
+.card{background:#13151d;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.card-title{font-size:.78rem;color:#7a8496;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+
+/* scatter chart */
+.chart-wrap{position:relative;height:220px;background:#0c0e14;border-radius:8px;padding:.75rem}
+.chart-area{position:relative;height:100%;width:100%}
+.dot{position:absolute;width:10px;height:10px;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;transition:transform .2s}
+.dot:hover{transform:translate(-50%,-50%) scale(2)}
+.dot.normal{background:rgba(34,211,238,.6);border:1px solid #22d3ee}
+.dot.anomaly{background:#f87171;border:2px solid #f87171;width:13px;height:13px;animation:glow 1.5s infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.6)}50%{box-shadow:0 0 0 6px rgba(248,113,113,0)}}
+.axis-x{position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,.08)}
+.axis-y{position:absolute;top:0;left:0;bottom:0;width:1px;background:rgba(255,255,255,.08)}
+.axis-label{position:absolute;font-size:.62rem;color:#7a8496}
+.threshold{position:absolute;left:0;right:0;height:1px;background:rgba(248,113,113,.4);border-top:1px dashed rgba(248,113,113,.5)}
+.threshold-label{position:absolute;right:4px;font-size:.62rem;color:#f87171}
+
+/* table */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{text-align:left;padding:.5rem .75rem;color:#7a8496;font-weight:500;border-bottom:1px solid rgba(255,255,255,.07)}
+td{padding:.55rem .75rem;border-bottom:1px solid rgba(255,255,255,.04)}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{font-size:.67rem;padding:.18rem .5rem;border-radius:99px;font-weight:600}
+.badge-high{background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.25)}
+.badge-med{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.2)}
+.badge-low{background:rgba(34,211,238,.1);color:#22d3ee;border:1px solid rgba(34,211,238,.2)}
+
+/* DAX code */
+.code{background:#0c0e14;border-radius:8px;padding:1rem;font-family:'Courier New',monospace;font-size:.75rem;line-height:1.7;overflow-x:auto}
+.kw{color:#a78bfa}.fn{color:#22d3ee}.str{color:#34d399}.cmt{color:#7a8496}
+.legend{display:flex;gap:1.5rem;font-size:.75rem;margin-bottom:.75rem}
+.legend-item{display:flex;align-items:center;gap:.4rem;color:#7a8496}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+
+.slider-wrap{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem}
+.slider-wrap label{font-size:.78rem;color:#7a8496;white-space:nowrap}
+input[type=range]{flex:1;accent-color:#fbbf24}
+.slider-val{font-size:.78rem;color:#fbbf24;min-width:30px}
+</style>
+</head>
+<body>
+<h1>🔍 Financial Anomaly Detection Dashboard</h1>
+<p class="sub">Z-score anomaly detection · Power BI-style KPIs · DAX measures · Simulates ExxonMobil Global Audit analytics</p>
+
+<div class="grid">
+  <div class="kpi"><div class="kpi-label">Transactions Analysed</div><div class="kpi-val cyan" id="kpi-total">12,847</div></div>
+  <div class="kpi"><div class="kpi-label">Anomalies Flagged</div><div class="kpi-val red"  id="kpi-anom">23</div></div>
+  <div class="kpi"><div class="kpi-label">Anomaly Rate</div><div class="kpi-val amber" id="kpi-rate">0.18%</div></div>
+  <div class="kpi"><div class="kpi-label">Avg Z-Score (flagged)</div><div class="kpi-val red" id="kpi-z">3.84</div></div>
+  <div class="kpi"><div class="kpi-label">Total Flagged Value</div><div class="kpi-val amber" id="kpi-val">$4.2M</div></div>
+  <div class="kpi"><div class="kpi-label">Audit Coverage</div><div class="kpi-val green">94.7%</div></div>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    <span>Transaction Amount vs Z-Score</span>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>Normal</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Anomaly</div>
+    </div>
+  </div>
+  <div class="slider-wrap">
+    <label>Z-Score Threshold:</label>
+    <input type="range" min="2" max="5" step="0.1" value="3" id="threshold-slider" oninput="updateThreshold(this.value)"/>
+    <span class="slider-val" id="threshold-val">3.0</span>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-area" id="chart-area">
+      <div class="axis-x"></div>
+      <div class="axis-y"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Flagged Transactions — Top Anomalies</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Transaction ID</th><th>Date</th><th>Vendor</th><th>Amount</th><th>Z-Score</th><th>Category</th><th>Risk</th></tr></thead>
+      <tbody id="anomaly-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">DAX Measure — Anomaly Detection Logic</div>
+  <div class="code">
+<span class="cmt">-- Z-Score Anomaly Flag (Power BI DAX)</span>
+<br/><span class="fn">Anomaly Flag</span> =
+<br/><span class="kw">VAR</span> _mean = <span class="fn">CALCULATE</span>(<span class="fn">AVERAGE</span>(Transactions[Amount]), <span class="fn">ALLEXCEPT</span>(Transactions, Transactions[Category]))
+<br/><span class="kw">VAR</span> _std  = <span class="fn">CALCULATE</span>(<span class="fn">STDEV.P</span>(Transactions[Amount]),  <span class="fn">ALLEXCEPT</span>(Transactions, Transactions[Category]))
+<br/><span class="kw">VAR</span> _z    = <span class="fn">DIVIDE</span>(<span class="fn">ABS</span>(Transactions[Amount] - _mean), _std, <span class="str">0</span>)
+<br/><span class="kw">RETURN</span> <span class="fn">IF</span>(_z > [Z-Score Threshold], <span class="str">"ANOMALY"</span>, <span class="str">"NORMAL"</span>)
+<br/>
+<br/><span class="cmt">-- Python equivalent (pandas)</span>
+<br/><span class="fn">df</span>[<span class="str">'z_score'</span>] = df.groupby(<span class="str">'category'</span>)[<span class="str">'amount'</span>].transform(
+<br/>&nbsp;&nbsp;<span class="kw">lambda</span> x: (x - x.mean()) / x.std()
+<br/>)
+<br/><span class="fn">df</span>[<span class="str">'is_anomaly'</span>] = df[<span class="str">'z_score'</span>].abs() > threshold
+  </div>
+</div>
+
+<script>
+const ANOMALIES = [
+  {id:'TXN-48291',date:'2025-03-14',vendor:'Apex Consulting Ltd',    amount:487200, z:5.82, cat:'Professional Services', risk:'high'},
+  {id:'TXN-31047',date:'2025-03-11',vendor:'Global Trade Partners',  amount:312400, z:4.91, cat:'Import/Export',         risk:'high'},
+  {id:'TXN-52018',date:'2025-03-09',vendor:'Meridian Logistics',     amount:298700, z:4.67, cat:'Logistics',             risk:'high'},
+  {id:'TXN-29841',date:'2025-03-08',vendor:'Vertex Tech Solutions',  amount:271500, z:4.43, cat:'IT Services',           risk:'high'},
+  {id:'TXN-44102',date:'2025-03-07',vendor:'Continental Supplies',   amount:198400, z:3.97, cat:'Procurement',           risk:'high'},
+  {id:'TXN-37654',date:'2025-03-06',vendor:'Offshore Holdings Ltd',  amount:187300, z:3.84, cat:'Financial Services',    risk:'high'},
+  {id:'TXN-61203',date:'2025-03-05',vendor:'Pacific Rim Imports',    amount:145600, z:3.72, cat:'Import/Export',         risk:'med'},
+  {id:'TXN-18847',date:'2025-03-04',vendor:'NorthStar Maintenance',  amount:134100, z:3.61, cat:'Facilities',            risk:'med'},
+  {id:'TXN-72091',date:'2025-03-03',vendor:'Cascade Energy Corp',    amount:127800, z:3.54, cat:'Energy',                risk:'med'},
+  {id:'TXN-55432',date:'2025-03-02',vendor:'Delta Freight Services', amount:118200, z:3.41, cat:'Logistics',             risk:'med'},
+]
+
+let threshold = 3.0
+
+function buildChart(t) {
+  const area = document.getElementById('chart-area')
+  const dots = area.querySelectorAll('.dot')
+  dots.forEach(d=>d.remove())
+  const line = area.querySelector('.threshold')
+  const lbl  = area.querySelector('.threshold-label')
+  if(line) line.remove(); if(lbl) lbl.remove()
+
+  // normal dots
+  for(let i=0;i<120;i++){
+    const x = 5 + Math.random()*90
+    const z = Math.random()*2.5 + 0.1
+    const y = 95 - (z/6)*90
+    const d = document.createElement('div')
+    d.className='dot normal'
+    d.style.left=x+'%'; d.style.top=y+'%'
+    area.appendChild(d)
+  }
+  // anomaly dots
+  ANOMALIES.forEach(a=>{
+    const x = 10 + Math.random()*80
+    const y = 95 - (Math.min(a.z,6)/6)*90
+    const d = document.createElement('div')
+    d.className = a.z > t ? 'dot anomaly' : 'dot normal'
+    d.style.left=x+'%'; d.style.top=y+'%'
+    d.title=`${a.vendor}: $${a.amount.toLocaleString()} (z=${a.z})`
+    area.appendChild(d)
+  })
+
+  // threshold line
+  const pct = 95 - (t/6)*90
+  const tLine = document.createElement('div')
+  tLine.className='threshold'
+  tLine.style.top=pct+'%'
+  area.appendChild(tLine)
+  const tLbl = document.createElement('div')
+  tLbl.className='threshold-label axis-label'
+  tLbl.style.top=(pct-12)+'%'
+  tLbl.textContent='z='+t.toFixed(1)
+  area.appendChild(tLbl)
+
+  // update table
+  const flagged = ANOMALIES.filter(a=>a.z>t)
+  document.getElementById('kpi-anom').textContent = flagged.length
+  document.getElementById('kpi-rate').textContent = ((flagged.length/12847)*100).toFixed(2)+'%'
+  const avgZ = flagged.length ? (flagged.reduce((s,a)=>s+a.z,0)/flagged.length).toFixed(2) : '—'
+  document.getElementById('kpi-z').textContent = avgZ
+  const totalVal = flagged.reduce((s,a)=>s+a.amount,0)
+  document.getElementById('kpi-val').textContent = '$'+(totalVal/1000000).toFixed(1)+'M'
+
+  const tbody = document.getElementById('anomaly-table')
+  tbody.innerHTML = flagged.map(a=>`
+    <tr>
+      <td style="font-family:'Courier New',monospace;color:#22d3ee">${a.id}</td>
+      <td style="color:#7a8496">${a.date}</td>
+      <td>${a.vendor}</td>
+      <td style="color:#fbbf24;font-weight:600">$${a.amount.toLocaleString()}</td>
+      <td style="color:#f87171;font-weight:700">${a.z}</td>
+      <td style="color:#7a8496">${a.cat}</td>
+      <td><span class="badge badge-${a.risk}">${a.risk.toUpperCase()}</span></td>
+    </tr>
+  `).join('')
+}
+
+function updateThreshold(v) {
+  threshold = parseFloat(v)
+  document.getElementById('threshold-val').textContent = threshold.toFixed(1)
+  buildChart(threshold)
+}
+
+buildChart(threshold)
+</script>
+</body>
+</html>

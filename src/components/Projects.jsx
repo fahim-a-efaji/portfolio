@@ -1,5 +1,5 @@
 import useFadeUp from '../hooks/useFadeUp'
-import { PROJECTS } from '../data/portfolio'
+import { PROJECTS, PROJECTS_NOTE } from '../data/portfolio'
 import styles from '../styles/Projects.module.css'
 
 export default function Projects({ onDemo }) {
@@ -15,6 +15,17 @@ export default function Projects({ onDemo }) {
           <p>
             Six fully working demos — each maps directly to real work
             done at ExxonMobil.
+          </p>
+        </div>
+        <div style={{
+          display: 'flex', gap: '1rem', alignItems: 'flex-start',
+          background: 'rgba(34,211,238,.05)', border: '1px solid rgba(34,211,238,.18)',
+          borderRadius: '14px', padding: '1.25rem 1.5rem', marginBottom: '3rem'
+        }}>
+          <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>💡</span>
+          <p style={{ fontSize: '.88rem', color: 'var(--muted)', lineHeight: 1.7 }}>
+            <strong style={{ color: 'var(--cyan)' }}>A note on these projects: </strong>
+            {PROJECTS_NOTE}
           </p>
         </div>
 

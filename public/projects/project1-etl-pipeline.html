@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ETL Pipeline Monitor</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#050609;color:#e8edf5;line-height:1.6;padding:2rem 1.5rem}
+h1{font-size:1.5rem;font-weight:800;color:#22d3ee;margin-bottom:.25rem}
+.sub{color:#7a8496;font-size:.85rem;margin-bottom:2rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:2rem}
+.kpi{background:#13151d;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1rem 1.2rem}
+.kpi-label{font-size:.72rem;color:#7a8496;margin-bottom:.3rem}
+.kpi-val{font-size:1.6rem;font-weight:800;color:#22d3ee}
+.kpi-val.green{color:#34d399}.kpi-val.amber{color:#fbbf24}.kpi-val.red{color:#f87171}
+.card{background:#13151d;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.card-title{font-size:.8rem;color:#7a8496;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem}
+/* pipeline stages */
+.stages{display:flex;align-items:center;gap:0;flex-wrap:wrap;gap:.5rem}
+.stage{display:flex;flex-direction:column;align-items:center;gap:.4rem;flex:1;min-width:80px}
+.stage-circle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;border:2px solid transparent;position:relative;transition:all .3s}
+.stage-circle.waiting{background:rgba(122,132,150,.1);border-color:rgba(122,132,150,.2)}
+.stage-circle.running{background:rgba(34,211,238,.1);border-color:#22d3ee;animation:pulse 1.5s infinite}
+.stage-circle.done{background:rgba(52,211,153,.1);border-color:#34d399}
+.stage-circle.error{background:rgba(248,113,113,.1);border-color:#f87171}
+.stage-label{font-size:.72rem;color:#7a8496;text-align:center}
+.stage-rows{font-size:.7rem;color:#22d3ee;text-align:center}
+.arrow{color:#7a8496;font-size:1.2rem;flex-shrink:0;align-self:center;margin-top:-18px}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,211,238,.4)}50%{box-shadow:0 0 0 8px rgba(34,211,238,0)}}
+/* progress bar */
+.progress-wrap{background:rgba(255,255,255,.07);border-radius:99px;height:8px;overflow:hidden;margin-bottom:.4rem}
+.progress-bar{height:100%;background:linear-gradient(90deg,#22d3ee,#a78bfa);border-radius:99px;transition:width .5s ease}
+.progress-label{font-size:.75rem;color:#7a8496;display:flex;justify-content:space-between}
+/* log */
+.log{background:#0c0e14;border-radius:8px;padding:1rem;height:180px;overflow-y:auto;font-family:'Courier New',monospace;font-size:.75rem}
+.log-line{margin-bottom:.2rem;line-height:1.5}
+.log-line.info{color:#22d3ee}.log-line.ok{color:#34d399}.log-line.warn{color:#fbbf24}.log-line.err{color:#f87171}
+/* run history */
+.runs{display:flex;flex-direction:column;gap:.5rem}
+.run{display:flex;align-items:center;gap:1rem;padding:.6rem .8rem;background:#0c0e14;border-radius:8px;font-size:.8rem}
+.run-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.run-status.ok{background:#34d399}.run-status.err{background:#f87171}
+.run-time{color:#7a8496;flex:1}
+.run-dur{color:#22d3ee;font-family:'Courier New',monospace}
+/* chart */
+.chart{display:flex;align-items:flex-end;gap:3px;height:80px;margin-top:.5rem}
+.bar{flex:1;background:rgba(34,211,238,.3);border-radius:3px 3px 0 0;transition:height .3s;min-height:4px;cursor:pointer;position:relative}
+.bar:hover{background:rgba(34,211,238,.7)}
+.bar-tip{position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:#1a1d27;border:1px solid rgba(34,211,238,.3);border-radius:4px;padding:2px 5px;font-size:.65rem;color:#22d3ee;white-space:nowrap;display:none}
+.bar:hover .bar-tip{display:block}
+/* buttons */
+.btns{display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.btn{padding:.5rem 1.1rem;border-radius:8px;border:none;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-primary{background:#22d3ee;color:#050609}.btn-primary:hover{background:#67e8f9}
+.btn-danger{background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.25)}.btn-danger:hover{background:rgba(248,113,113,.25)}
+.btn-outline{background:transparent;color:#7a8496;border:1px solid rgba(255,255,255,.1)}.btn-outline:hover{border-color:#22d3ee;color:#22d3ee}
+.tag{font-size:.68rem;padding:.2rem .55rem;border-radius:99px;background:rgba(34,211,238,.1);color:#22d3ee;border:1px solid rgba(34,211,238,.2)}
+</style>
+</head>
+<body>
+<h1>⚙️ ETL Pipeline Monitor</h1>
+<p class="sub">Real-time monitoring · Python + SQL + Snowflake · Simulates ExxonMobil audit data pipelines</p>
+
+<div class="btns">
+  <button class="btn btn-primary" onclick="startPipeline()">▶ Run Pipeline</button>
+  <button class="btn btn-danger"  onclick="injectError()">⚡ Inject Error</button>
+  <button class="btn btn-outline" onclick="resetAll()">↺ Reset</button>
+  <span class="tag" id="status-tag">Idle</span>
+</div>
+
+<div class="grid">
+  <div class="kpi"><div class="kpi-label">Total Rows Processed</div><div class="kpi-val" id="kpi-rows">0</div></div>
+  <div class="kpi"><div class="kpi-label">Last Run Duration</div><div class="kpi-val green" id="kpi-dur">—</div></div>
+  <div class="kpi"><div class="kpi-label">Success Rate</div><div class="kpi-val green" id="kpi-success">100%</div></div>
+  <div class="kpi"><div class="kpi-label">Errors Today</div><div class="kpi-val" id="kpi-errors">0</div></div>
+</div>
+
+<div class="card">
+  <div class="card-title">Pipeline Stages</div>
+  <div class="stages" id="stages"></div>
+  <div style="margin-top:1.25rem">
+    <div class="progress-label"><span>Overall Progress</span><span id="pct">0%</span></div>
+    <div class="progress-wrap" style="margin-top:.4rem"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+  <div class="card">
+    <div class="card-title">Live Log Output</div>
+    <div class="log" id="log"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Run History</div>
+    <div class="runs" id="runs">
+      <div class="run"><div class="run-status ok"></div><div class="run-time">Today 09:15</div><div>247,832 rows</div><div class="run-dur">4m 12s</div></div>
+      <div class="run"><div class="run-status ok"></div><div class="run-time">Today 06:00</div><div>251,104 rows</div><div class="run-dur">4m 31s</div></div>
+      <div class="run"><div class="run-status err"></div><div class="run-time">Yesterday 22:00</div><div>0 rows</div><div class="run-dur">0m 47s</div></div>
+      <div class="run"><div class="run-status ok"></div><div class="run-time">Yesterday 18:00</div><div>239,501 rows</div><div class="run-dur">3m 58s</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:1.25rem">
+  <div class="card-title">24-Hour Row Volume</div>
+  <div class="chart" id="chart"></div>
+  <div style="display:flex;justify-content:space-between;margin-top:.4rem">
+    <span style="font-size:.68rem;color:#7a8496">00:00</span>
+    <span style="font-size:.68rem;color:#7a8496">06:00</span>
+    <span style="font-size:.68rem;color:#7a8496">12:00</span>
+    <span style="font-size:.68rem;color:#7a8496">18:00</span>
+    <span style="font-size:.68rem;color:#7a8496">Now</span>
+  </div>
+</div>
+
+<script>
+const STAGES = [
+  {id:'extract', label:'Extract',  icon:'📥', source:'Snowflake'},
+  {id:'validate',label:'Validate', icon:'✅', source:'Schema Check'},
+  {id:'transform',label:'Transform',icon:'⚙️', source:'Python/pandas'},
+  {id:'enrich',  label:'Enrich',   icon:'🔗', source:'Azure SQL Join'},
+  {id:'load',    label:'Load',     icon:'📤', source:'Azure SQL'},
+  {id:'audit',   label:'Audit Log',icon:'📋', source:'Cosmos DB'},
+]
+
+let running = false, errorMode = false, totalRuns = 0, errorCount = 0, currentInterval = null
+
+function buildStages(states={}) {
+  const el = document.getElementById('stages')
+  el.innerHTML = ''
+  STAGES.forEach((s,i) => {
+    const state = states[s.id] || 'waiting'
+    const rows  = states[s.id+'_rows'] || ''
+    el.innerHTML += `
+      <div class="stage">
+        <div class="stage-circle ${state}">${s.icon}</div>
+        <div class="stage-label">${s.label}</div>
+        ${rows ? `<div class="stage-rows">${rows}</div>` : ''}
+      </div>
+      ${i < STAGES.length-1 ? '<div class="arrow">→</div>' : ''}
+    `
+  })
+}
+
+function log(msg, type='info') {
+  const el = document.getElementById('log')
+  const t   = new Date().toLocaleTimeString()
+  el.innerHTML += `<div class="log-line ${type}">[${t}] ${msg}</div>`
+  el.scrollTop  = el.scrollHeight
+}
+
+function buildChart() {
+  const el = document.getElementById('chart')
+  const vals = Array.from({length:24},(_,i) => {
+    if(i===22) return 0
+    return Math.floor(Math.random()*200+50) * 1000
+  })
+  const max = Math.max(...vals)
+  el.innerHTML = vals.map((v,i) => {
+    const h = Math.round((v/max)*100)
+    const label = v ? (v/1000).toFixed(0)+'k' : 'Error'
+    return `<div class="bar" style="height:${h}%"><div class="bar-tip">${label}</div></div>`
+  }).join('')
+}
+
+async function startPipeline() {
+  if(running) return
+  running = true
+  errorMode = false
+  document.getElementById('status-tag').textContent = 'Running'
+  document.getElementById('status-tag').style.background = 'rgba(34,211,238,.15)'
+  document.getElementById('status-tag').style.color = '#22d3ee'
+
+  const states = {}
+  const rowCounts = [248103, 247891, 201447, 201447, 201447, 201447]
+  const logMsgs = [
+    ['info','Connecting to Snowflake AUDIT_DB.TRANSACTIONS...'],
+    ['info','Executing incremental extract query — delta since last run'],
+    ['ok',  'Extracted 248,103 rows from source in 12.4s'],
+    ['info','Running schema validation against contract v2.4...'],
+    ['ok',  'Schema valid — 0 nulls in required fields, 0 type mismatches'],
+    ['info','Applying pandas transforms: dedup, normalise, currency convert...'],
+    ['ok',  'Transform complete — 201,447 clean rows (46,656 duplicates removed)'],
+    ['info','Joining with Azure SQL dim_entity and dim_account...'],
+    ['ok',  'Enrichment join complete — 201,447 rows fully resolved'],
+    ['info','Loading to Azure SQL AUDIT_STAGING.fact_transactions...'],
+    ['ok',  'Load complete — 201,447 rows inserted, 0 rejected'],
+    ['info','Writing audit log entry to Cosmos DB...'],
+    ['ok',  '✓ Pipeline run #'+(totalRuns+1)+' complete — 201,447 rows processed'],
+  ]
+
+  let logIdx = 0
+  for(let si=0; si<STAGES.length; si++) {
+    const s = STAGES[si]
+    states[s.id] = 'running'
+    buildStages(states)
+    document.getElementById('progress-bar').style.width = Math.round((si/STAGES.length)*100)+'%'
+    document.getElementById('pct').textContent = Math.round((si/STAGES.length)*100)+'%'
+
+    await sleep(600)
+    if(logIdx < logMsgs.length) { log(logMsgs[logIdx][1], logMsgs[logIdx][0]); logIdx++ }
+    await sleep(400)
+    if(logIdx < logMsgs.length) { log(logMsgs[logIdx][1], logMsgs[logIdx][0]); logIdx++ }
+
+    states[s.id] = 'done'
+    states[s.id+'_rows'] = (rowCounts[si]/1000).toFixed(0)+'k'
+    buildStages(states)
+  }
+
+  document.getElementById('progress-bar').style.width = '100%'
+  document.getElementById('pct').textContent = '100%'
+  totalRuns++
+  document.getElementById('kpi-rows').textContent = (201447).toLocaleString()
+  document.getElementById('kpi-dur').textContent  = '4m 18s'
+  document.getElementById('kpi-success').textContent = '100%'
+  document.getElementById('status-tag').textContent = '✓ Complete'
+  document.getElementById('status-tag').style.background = 'rgba(52,211,153,.15)'
+  document.getElementById('status-tag').style.color = '#34d399'
+
+  const runs = document.getElementById('runs')
+  const now  = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+  runs.innerHTML = `<div class="run"><div class="run-status ok"></div><div class="run-time">Today ${now}</div><div>201,447 rows</div><div class="run-dur">4m 18s</div></div>` + runs.innerHTML
+  running = false
+}
+
+async function injectError() {
+  if(running) return
+  running = true; errorMode = true
+  errorCount++
+  document.getElementById('kpi-errors').textContent = errorCount
+  document.getElementById('kpi-errors').className = 'kpi-val red'
+  document.getElementById('status-tag').textContent = 'Running'
+
+  const states = {}
+  states['extract']  = 'done';  states['extract_rows']  = '248k'
+  states['validate'] = 'done';  states['validate_rows'] = '248k'
+  states['transform']= 'running'
+  buildStages(states)
+
+  log('Connecting to Snowflake...', 'info')
+  await sleep(400)
+  log('Extract complete — 248,103 rows', 'ok')
+  await sleep(400)
+  log('Validation passed', 'ok')
+  await sleep(500)
+  log('Running pandas transform...', 'info')
+  await sleep(600)
+  log('ERROR: MemoryError — DataFrame exceeds 8GB limit during pivot operation', 'err')
+  await sleep(200)
+  log('Traceback: pandas/core/frame.py line 4892 in pivot_table', 'err')
+  await sleep(200)
+  log('Pipeline aborted at TRANSFORM stage — sending alert to Slack #data-alerts', 'warn')
+
+  states['transform'] = 'error'
+  buildStages(states)
+  document.getElementById('status-tag').textContent = '✗ Failed'
+  document.getElementById('status-tag').style.background = 'rgba(248,113,113,.15)'
+  document.getElementById('status-tag').style.color = '#f87171'
+  document.getElementById('kpi-success').textContent = Math.round((totalRuns/(totalRuns+1))*100)+'%'
+  document.getElementById('kpi-success').className = 'kpi-val amber'
+
+  const runs = document.getElementById('runs')
+  const now  = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+  runs.innerHTML = `<div class="run"><div class="run-status err"></div><div class="run-time">Today ${now}</div><div>0 rows</div><div class="run-dur">0m 47s</div></div>` + runs.innerHTML
+  running = false
+}
+
+function resetAll() {
+  running = false; errorCount = 0; totalRuns = 0
+  buildStages()
+  document.getElementById('log').innerHTML = ''
+  document.getElementById('progress-bar').style.width = '0%'
+  document.getElementById('pct').textContent = '0%'
+  document.getElementById('kpi-rows').textContent = '0'
+  document.getElementById('kpi-dur').textContent  = '—'
+  document.getElementById('kpi-success').textContent = '100%'
+  document.getElementById('kpi-success').className = 'kpi-val green'
+  document.getElementById('kpi-errors').textContent = '0'
+  document.getElementById('kpi-errors').className = 'kpi-val'
+  document.getElementById('status-tag').textContent = 'Idle'
+  document.getElementById('status-tag').style.background = ''
+  document.getElementById('status-tag').style.color = ''
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)) }
+
+buildStages()
+buildChart()
+log('Pipeline monitor ready. Click ▶ Run Pipeline to start.','info')
+</script>
+</body>
+</html>

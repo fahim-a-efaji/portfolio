@@ -1,6 +1,7 @@
 // ─── Typed roles cycling in hero ────────────────────────────────────────────
 export const ROLES = [
   'Analytics Engineer',
+  'Data Analyst',
   'Data Pipeline Builder',
   'Azure & AI Specialist',
   'Power BI Developer',
@@ -89,6 +90,8 @@ export const EDUCATION = {
 }
 
 // ─── Projects ────────────────────────────────────────────────────────────────
+export const PROJECTS_NOTE = `My day-to-day work at ExxonMobil runs on proprietary enterprise systems and confidential data I cannot share publicly. Rather than leave this portfolio empty, I used AI as a tool to help recreate the concepts, architectures, and techniques I apply daily — translating real professional experience into shareable, interactive demos. The domain knowledge, problem-solving approach, and technical direction are entirely mine; AI accelerated the build. I believe transparency about this reflects both integrity and a practical understanding of how modern professionals work.`
+
 export const PROJECTS = [
   {
     icon: '⚙️',

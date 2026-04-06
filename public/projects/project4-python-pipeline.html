@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Python Data Pipeline — Live Output</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#050609;color:#e8edf5;padding:2rem 1.5rem}
+h1{font-size:1.5rem;font-weight:800;color:#34d399;margin-bottom:.25rem}
+.sub{color:#7a8496;font-size:.85rem;margin-bottom:2rem}
+.card{background:#13151d;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.card-title{font-size:.78rem;color:#7a8496;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem}
+.steps{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.step{padding:.4rem .9rem;border-radius:99px;font-size:.78rem;border:1px solid rgba(255,255,255,.1);color:#7a8496;display:flex;align-items:center;gap:.4rem}
+.step.active{background:rgba(52,211,153,.1);border-color:#34d399;color:#34d399}
+.step.done{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3);color:#34d399}
+.step.error{background:rgba(248,113,113,.1);border-color:#f87171;color:#f87171}
+
+.terminal{background:#0a0c10;border-radius:10px;padding:1.1rem;font-family:'Courier New',monospace;font-size:.76rem;line-height:1.75;height:260px;overflow-y:auto;border:1px solid rgba(255,255,255,.06)}
+.t-line{margin-bottom:0}
+.t-blue{color:#22d3ee}.t-green{color:#34d399}.t-yellow{color:#fbbf24}.t-red{color:#f87171}.t-gray{color:#7a8496}.t-white{color:#e8edf5}.t-violet{color:#a78bfa}
+
+.df-table{width:100%;border-collapse:collapse;font-size:.74rem;font-family:'Courier New',monospace}
+.df-table th{text-align:right;padding:.3rem .6rem;color:#a78bfa;border-bottom:1px solid rgba(255,255,255,.1);background:#0c0e14}
+.df-table th:first-child{text-align:left}
+.df-table td{text-align:right;padding:.3rem .6rem;border-bottom:1px solid rgba(255,255,255,.04);color:#e8edf5}
+.df-table td:first-child{text-align:left;color:#7a8496}
+.df-table tr:hover td{background:rgba(255,255,255,.02)}
+
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:100px;margin-top:.5rem}
+.cbar{flex:1;border-radius:4px 4px 0 0;min-height:4px;transition:height .4s ease}
+.chart-labels{display:flex;gap:6px;margin-top:.3rem}
+.chart-label{flex:1;font-size:.62rem;color:#7a8496;text-align:center}
+
+.btn{padding:.5rem 1.2rem;border-radius:8px;border:none;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;margin-right:.5rem;margin-bottom:1rem}
+.btn-green{background:#34d399;color:#050609}.btn-green:hover{background:#6ee7b7}
+.btn-gray{background:transparent;color:#7a8496;border:1px solid rgba(255,255,255,.1)}.btn-gray:hover{border-color:#34d399;color:#34d399}
+
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.info-box{background:#0c0e14;border-radius:8px;padding:.85rem 1rem}
+.info-label{font-size:.7rem;color:#7a8496;margin-bottom:.3rem}
+.info-val{font-size:.9rem;font-weight:600;color:#34d399;font-family:'Courier New',monospace}
+</style>
+</head>
+<body>
+<h1>🐍 Python Data Pipeline — Live Output</h1>
+<p class="sub">pandas · scipy · step-by-step execution · df.info() · df.head() · live chart generation</p>
+
+<div>
+  <button class="btn btn-green" onclick="runPipeline()">▶ Run Full Pipeline</button>
+  <button class="btn btn-gray"  onclick="resetPipeline()">↺ Reset</button>
+</div>
+
+<div class="steps" id="steps">
+  <div class="step" id="step-0">1. Load</div>
+  <div class="step" id="step-1">2. Inspect</div>
+  <div class="step" id="step-2">3. Clean</div>
+  <div class="step" id="step-3">4. Transform</div>
+  <div class="step" id="step-4">5. Detect</div>
+  <div class="step" id="step-5">6. Export</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Terminal Output</div>
+  <div class="terminal" id="terminal">
+    <div class="t-line t-gray"># Python Data Pipeline — ready to run</div>
+    <div class="t-line t-gray"># Click ▶ Run Full Pipeline to start execution</div>
+  </div>
+</div>
+
+<div id="inspect-section" style="display:none">
+  <div class="card">
+    <div class="card-title">df.info() — DataFrame Structure</div>
+    <div class="info-grid">
+      <div class="info-box"><div class="info-label">Shape</div><div class="info-val" id="df-shape">—</div></div>
+      <div class="info-box"><div class="info-label">Memory Usage</div><div class="info-val" id="df-mem">—</div></div>
+      <div class="info-box"><div class="info-label">Null Values</div><div class="info-val" id="df-nulls">—</div></div>
+      <div class="info-box"><div class="info-label">Dtypes</div><div class="info-val" id="df-dtypes">—</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">df.head(5) — Sample Rows</div>
+    <div style="overflow-x:auto" id="df-head"></div>
+  </div>
+</div>
+
+<div id="chart-section" style="display:none">
+  <div class="card">
+    <div class="card-title">Amount Distribution by Category (after transform)</div>
+    <div class="chart-bars" id="chart-bars"></div>
+    <div class="chart-labels" id="chart-labels"></div>
+  </div>
+</div>
+
+<script>
+let running = false
+
+const STEPS = [
+  {
+    id: 0, name: 'Load',
+    lines: [
+      ['blue',  'import pandas as pd'],
+      ['blue',  'import numpy as np'],
+      ['blue',  'from scipy import stats'],
+      ['gray',  ''],
+      ['white', "df = pd.read_sql('''"],
+      ['white', '    SELECT t.*, v.vendor_name, v.risk_category,'],
+      ['white', '           a.gl_category, d.fiscal_quarter'],
+      ['white', '    FROM fact_transactions t'],
+      ['white', '    JOIN dim_vendor v ON t.vendor_key = v.vendor_key'],
+      ['white', "    ...''', con=snowflake_engine)"],
+      ['green', '✓ Loaded 12,847 rows from Snowflake in 3.2s'],
+    ]
+  },
+  {
+    id: 1, name: 'Inspect',
+    lines: [
+      ['blue',  'print(df.info())'],
+      ['gray',  '<class \'pandas.core.frame.DataFrame\'>'],
+      ['gray',  'RangeIndex: 12847 entries, 0 to 12846'],
+      ['gray',  'Data columns (total 11 columns):'],
+      ['violet','  transaction_id    12847 non-null  object'],
+      ['violet','  amount_usd        12847 non-null  float64'],
+      ['violet','  currency_code     12847 non-null  object'],
+      ['violet','  gl_category       12847 non-null  object'],
+      ['violet','  is_anomaly          123 non-null  object  ← nulls!'],
+      ['yellow','  dtypes: float64(3), int64(2), object(6)'],
+      ['yellow','  memory usage: 1.1 MB'],
+      ['green', '✓ Inspection complete — 123 nulls in is_anomaly detected'],
+    ],
+    inspect: true
+  },
+  {
+    id: 2, name: 'Clean',
+    lines: [
+      ['blue',  '# Drop duplicates'],
+      ['white', 'df = df.drop_duplicates(subset=[\'transaction_id\'])'],
+      ['green', '✓ Removed 46,656 duplicate rows'],
+      ['blue',  '# Fill nulls'],
+      ['white', "df['is_anomaly'] = df['is_anomaly'].fillna(False)"],
+      ['green', '✓ Filled 123 null values in is_anomaly'],
+      ['blue',  '# Normalise currency'],
+      ['white', "df['amount_usd'] = df.apply(lambda r: r['amount'] * fx[r['currency_code']], axis=1)"],
+      ['green', '✓ Normalised 8 currencies to USD'],
+      ['green', '✓ Clean shape: (12,847, 11)'],
+    ]
+  },
+  {
+    id: 3, name: 'Transform',
+    lines: [
+      ['blue',  '# Z-score anomaly detection by category'],
+      ['white', "df['z_score'] = df.groupby('gl_category')['amount_usd'].transform("],
+      ['white', "    lambda x: np.abs(stats.zscore(x, nan_policy='omit'))"],
+      ['white', ')'],
+      ['green', '✓ Z-scores computed for 12,847 transactions'],
+      ['blue',  '# Flag anomalies'],
+      ['white', "df['is_anomaly'] = df['z_score'] > 3.0"],
+      ['green', '✓ Flagged 23 anomalies (z > 3.0)'],
+      ['blue',  '# Rolling 7-day average'],
+      ['white', "df = df.sort_values('full_date')"],
+      ['white', "df['rolling_avg_7d'] = df.groupby('vendor_key')['amount_usd'].transform("],
+      ['white', "    lambda x: x.rolling(7, min_periods=1).mean())"],
+      ['green', '✓ Rolling averages computed'],
+    ],
+    chart: true
+  },
+  {
+    id: 4, name: 'Detect',
+    lines: [
+      ['blue',  '# Isolation Forest for multi-variate detection'],
+      ['white', 'from sklearn.ensemble import IsolationForest'],
+      ['white', "features = df[['amount_usd','z_score','rolling_avg_7d']]"],
+      ['white', 'iso = IsolationForest(contamination=0.02, random_state=42)'],
+      ['white', "df['iso_anomaly'] = iso.fit_predict(features)"],
+      ['green', '✓ IsolationForest detected 18 additional anomalies'],
+      ['white', "combined = df[(df['is_anomaly']) | (df['iso_anomaly']==-1)]"],
+      ['yellow','⚠ Total flagged for review: 41 transactions ($6.8M)'],
+    ]
+  },
+  {
+    id: 5, name: 'Export',
+    lines: [
+      ['blue',  '# Write results to Azure SQL'],
+      ['white', "df.to_sql('fact_transactions', con=azure_engine,"],
+      ['white', "         if_exists='replace', index=False, method='multi')"],
+      ['green', '✓ 12,847 rows written to Azure SQL AUDIT_STAGING'],
+      ['blue',  '# Export anomalies to Excel for audit team'],
+      ['white', "combined.to_excel('anomaly_report_2025Q1.xlsx', index=False)"],
+      ['green', '✓ Anomaly report exported (41 rows, 8 sheets)'],
+      ['blue',  '# Log run to Cosmos DB'],
+      ['green', '✓ Run metadata logged — pipeline complete'],
+      ['green', ''],
+      ['green', '🎉 Pipeline finished in 18.4s — 12,847 rows processed, 41 flagged'],
+    ]
+  },
+]
+
+async function runPipeline() {
+  if (running) return
+  running = true
+  const term = document.getElementById('terminal')
+  term.innerHTML = ''
+
+  for (const step of STEPS) {
+    setStep(step.id, 'active')
+    await sleep(300)
+    for (const [type, line] of step.lines) {
+      addLine(line, type)
+      await sleep(line.startsWith('✓') || line.startsWith('⚠') ? 60 : 40)
+    }
+    if (step.inspect) showInspect()
+    if (step.chart) showChart()
+    setStep(step.id, 'done')
+    await sleep(200)
+  }
+  running = false
+}
+
+function addLine(text, type) {
+  const el = document.getElementById('terminal')
+  const cls = {blue:'t-blue',green:'t-green',yellow:'t-yellow',red:'t-red',gray:'t-gray',white:'t-white',violet:'t-violet'}[type]||''
+  el.innerHTML += `<div class="t-line ${cls}">${text}</div>`
+  el.scrollTop = el.scrollHeight
+}
+
+function setStep(i, state) {
+  const el = document.getElementById('step-'+i)
+  el.className = 'step ' + state
+}
+
+function showInspect() {
+  document.getElementById('inspect-section').style.display = 'block'
+  document.getElementById('df-shape').textContent = '(12847, 11)'
+  document.getElementById('df-mem').textContent   = '1.1 MB'
+  document.getElementById('df-nulls').textContent = '123 (is_anomaly)'
+  document.getElementById('df-dtypes').textContent = 'float64(3), object(6)'
+  document.getElementById('df-head').innerHTML = `
+    <table class="df-table">
+      <thead><tr><th></th><th>transaction_id</th><th>amount_usd</th><th>gl_category</th><th>vendor_name</th><th>z_score</th><th>is_anomaly</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>TXN-10001</td><td>12,400.00</td><td>Logistics</td><td>Meridian Ltd</td><td>0.84</td><td>False</td></tr>
+        <tr><td>1</td><td>TXN-10002</td><td>8,750.50</td><td>IT Services</td><td>Vertex Tech</td><td>0.61</td><td>False</td></tr>
+        <tr><td>2</td><td>TXN-10003</td><td>487,200.00</td><td>Prof. Services</td><td>Apex Consult</td><td>5.82</td><td><span style="color:#f87171">True</span></td></tr>
+        <tr><td>3</td><td>TXN-10004</td><td>3,200.00</td><td>Facilities</td><td>NorthStar</td><td>0.22</td><td>False</td></tr>
+        <tr><td>4</td><td>TXN-10005</td><td>15,800.00</td><td>Logistics</td><td>Pacific Rim</td><td>1.14</td><td>False</td></tr>
+      </tbody>
+    </table>`
+}
+
+function showChart() {
+  document.getElementById('chart-section').style.display = 'block'
+  const cats   = ['Logistics','IT Services','Prof. Svcs','Procurement','Facilities','Energy','Finance','Import']
+  const vals   = [2.4,1.8,4.2,3.1,1.2,2.8,3.7,2.1]
+  const colors = ['#22d3ee','#22d3ee','#f87171','#fbbf24','#22d3ee','#22d3ee','#fbbf24','#22d3ee']
+  const max    = Math.max(...vals)
+  document.getElementById('chart-bars').innerHTML = vals.map((v,i)=>`<div class="cbar" style="height:${Math.round((v/max)*100)}%;background:${colors[i]}" title="${cats[i]}: $${v}M"></div>`).join('')
+  document.getElementById('chart-labels').innerHTML = cats.map(c=>`<div class="chart-label">${c.split(' ')[0]}</div>`).join('')
+}
+
+function resetPipeline() {
+  running = false
+  document.getElementById('terminal').innerHTML = `<div class="t-line t-gray"># Python Data Pipeline — ready to run</div><div class="t-line t-gray"># Click ▶ Run Full Pipeline to start execution</div>`
+  document.getElementById('inspect-section').style.display = 'none'
+  document.getElementById('chart-section').style.display = 'none'
+  for(let i=0;i<6;i++) document.getElementById('step-'+i).className = 'step'
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)) }
+</script>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SQL Data Modeling Showcase</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#050609;color:#e8edf5;padding:2rem 1.5rem}
+h1{font-size:1.5rem;font-weight:800;color:#a78bfa;margin-bottom:.25rem}
+.sub{color:#7a8496;font-size:.85rem;margin-bottom:2rem}
+.card{background:#13151d;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.card-title{font-size:.78rem;color:#7a8496;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem}
+.tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.tab{padding:.45rem 1rem;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#7a8496;cursor:pointer;font-size:.82rem;font-family:inherit;transition:all .2s}
+.tab:hover{border-color:#a78bfa;color:#a78bfa}
+.tab.active{background:rgba(167,139,250,.15);border-color:#a78bfa;color:#a78bfa}
+.panel{display:none}.panel.active{display:block}
+
+/* schema diagram */
+.schema{display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start}
+.table-box{background:#0c0e14;border-radius:10px;min-width:170px;overflow:hidden;flex-shrink:0}
+.table-box.fact{border:2px solid #a78bfa}
+.table-box.dim{border:1px solid rgba(34,211,238,.4)}
+.table-head{padding:.5rem .85rem;font-size:.78rem;font-weight:700}
+.table-box.fact .table-head{background:rgba(167,139,250,.2);color:#a78bfa}
+.table-box.dim  .table-head{background:rgba(34,211,238,.1);color:#22d3ee}
+.table-col{padding:.3rem .85rem;font-size:.72rem;display:flex;align-items:center;gap:.4rem;border-top:1px solid rgba(255,255,255,.04)}
+.pk{color:#fbbf24;font-size:.62rem;font-weight:700}
+.fk{color:#a78bfa;font-size:.62rem;font-weight:700}
+.col-type{color:#7a8496;font-size:.65rem;margin-left:auto}
+
+/* code */
+.code{background:#0c0e14;border-radius:8px;padding:1.1rem;font-family:'Courier New',monospace;font-size:.76rem;line-height:1.8;overflow-x:auto;white-space:pre}
+.kw{color:#a78bfa}.fn{color:#22d3ee}.str{color:#34d399}.cmt{color:#7a8496;font-style:italic}.num{color:#fbbf24}
+
+/* results table */
+.result-table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:.75rem}
+.result-table th{text-align:left;padding:.45rem .75rem;color:#7a8496;font-weight:500;border-bottom:1px solid rgba(255,255,255,.1);background:#0c0e14}
+.result-table td{padding:.45rem .75rem;border-bottom:1px solid rgba(255,255,255,.04)}
+.result-table tr:hover td{background:rgba(255,255,255,.02)}
+.hl{color:#22d3ee;font-weight:600}
+
+/* perf bars */
+.perf-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem}
+.perf-label{font-size:.75rem;color:#e8edf5;min-width:160px}
+.perf-bar-wrap{flex:1;background:rgba(255,255,255,.07);border-radius:99px;height:6px}
+.perf-bar{height:100%;border-radius:99px;transition:width .6s ease}
+.perf-ms{font-size:.72rem;color:#7a8496;min-width:55px;text-align:right}
+
+.run-btn{padding:.45rem 1.1rem;border-radius:8px;background:#a78bfa;color:#050609;border:none;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;margin-bottom:1rem}
+.run-btn:hover{background:#c4b5fd}
+</style>
+</head>
+<body>
+<h1>🗃️ SQL Data Modeling Showcase</h1>
+<p class="sub">Snowflake star schema · Window functions · Recursive CTEs · Dynamic PIVOT · Index performance · Production SQL patterns</p>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('schema')">📐 Star Schema</button>
+  <button class="tab" onclick="switchTab('window')">🪟 Window Functions</button>
+  <button class="tab" onclick="switchTab('cte')">🔁 Recursive CTE</button>
+  <button class="tab" onclick="switchTab('pivot')">↔️ Dynamic PIVOT</button>
+  <button class="tab" onclick="switchTab('index')">⚡ Index Performance</button>
+</div>
+
+<!-- SCHEMA -->
+<div class="panel active" id="panel-schema">
+  <div class="card">
+    <div class="card-title">Snowflake Star Schema — Audit Analytics Data Warehouse</div>
+    <div class="schema">
+      <div class="table-box fact">
+        <div class="table-head">📊 fact_transactions</div>
+        <div class="table-col"><span class="pk">PK</span> transaction_id <span class="col-type">BIGINT</span></div>
+        <div class="table-col"><span class="fk">FK</span> date_key <span class="col-type">INT</span></div>
+        <div class="table-col"><span class="fk">FK</span> vendor_key <span class="col-type">INT</span></div>
+        <div class="table-col"><span class="fk">FK</span> account_key <span class="col-type">INT</span></div>
+        <div class="table-col"><span class="fk">FK</span> entity_key <span class="col-type">INT</span></div>
+        <div class="table-col">amount <span class="col-type">DECIMAL(18,2)</span></div>
+        <div class="table-col">currency_code <span class="col-type">VARCHAR(3)</span></div>
+        <div class="table-col">amount_usd <span class="col-type">DECIMAL(18,2)</span></div>
+        <div class="table-col">z_score <span class="col-type">FLOAT</span></div>
+        <div class="table-col">is_anomaly <span class="col-type">BOOLEAN</span></div>
+        <div class="table-col">load_ts <span class="col-type">TIMESTAMP_NTZ</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div class="table-box dim">
+          <div class="table-head">📅 dim_date</div>
+          <div class="table-col"><span class="pk">PK</span> date_key <span class="col-type">INT</span></div>
+          <div class="table-col">full_date <span class="col-type">DATE</span></div>
+          <div class="table-col">fiscal_year <span class="col-type">INT</span></div>
+          <div class="table-col">fiscal_quarter <span class="col-type">INT</span></div>
+          <div class="table-col">month_name <span class="col-type">VARCHAR</span></div>
+        </div>
+        <div class="table-box dim">
+          <div class="table-head">🏢 dim_vendor</div>
+          <div class="table-col"><span class="pk">PK</span> vendor_key <span class="col-type">INT</span></div>
+          <div class="table-col">vendor_id <span class="col-type">VARCHAR(20)</span></div>
+          <div class="table-col">vendor_name <span class="col-type">VARCHAR(200)</span></div>
+          <div class="table-col">risk_category <span class="col-type">VARCHAR(50)</span></div>
+          <div class="table-col">country <span class="col-type">VARCHAR(60)</span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div class="table-box dim">
+          <div class="table-head">💰 dim_account</div>
+          <div class="table-col"><span class="pk">PK</span> account_key <span class="col-type">INT</span></div>
+          <div class="table-col">account_code <span class="col-type">VARCHAR(20)</span></div>
+          <div class="table-col">account_name <span class="col-type">VARCHAR(100)</span></div>
+          <div class="table-col">gl_category <span class="col-type">VARCHAR(50)</span></div>
+          <div class="table-col">cost_centre <span class="col-type">VARCHAR(20)</span></div>
+        </div>
+        <div class="table-box dim">
+          <div class="table-head">🌍 dim_entity</div>
+          <div class="table-col"><span class="pk">PK</span> entity_key <span class="col-type">INT</span></div>
+          <div class="table-col">entity_code <span class="col-type">VARCHAR(10)</span></div>
+          <div class="table-col">entity_name <span class="col-type">VARCHAR(100)</span></div>
+          <div class="table-col">region <span class="col-type">VARCHAR(50)</span></div>
+          <div class="table-col">business_unit <span class="col-type">VARCHAR(50)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WINDOW FUNCTIONS -->
+<div class="panel" id="panel-window">
+  <div class="card">
+    <div class="card-title">Window Functions — Running Totals & Rankings</div>
+    <button class="run-btn" onclick="runWindow()">▶ Run Query</button>
+    <div class="code"><span class="kw">SELECT</span>
+  t.transaction_id,
+  d.full_date,
+  v.vendor_name,
+  t.amount_usd,
+  <span class="fn">SUM</span>(t.amount_usd) <span class="kw">OVER</span> (
+    <span class="kw">PARTITION BY</span> d.fiscal_year, a.gl_category
+    <span class="kw">ORDER BY</span> d.full_date
+    <span class="kw">ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</span>
+  ) <span class="kw">AS</span> running_total,
+  <span class="fn">RANK</span>() <span class="kw">OVER</span> (
+    <span class="kw">PARTITION BY</span> d.fiscal_year
+    <span class="kw">ORDER BY</span> t.amount_usd <span class="kw">DESC</span>
+  ) <span class="kw">AS</span> spend_rank,
+  <span class="fn">LAG</span>(t.amount_usd, <span class="num">1</span>) <span class="kw">OVER</span> (
+    <span class="kw">PARTITION BY</span> v.vendor_key <span class="kw">ORDER BY</span> d.full_date
+  ) <span class="kw">AS</span> prev_transaction,
+  <span class="fn">ROUND</span>(
+    (t.amount_usd - <span class="fn">AVG</span>(t.amount_usd) <span class="kw">OVER</span>(<span class="kw">PARTITION BY</span> a.gl_category))
+    / <span class="fn">NULLIF</span>(<span class="fn">STDDEV</span>(t.amount_usd) <span class="kw">OVER</span>(<span class="kw">PARTITION BY</span> a.gl_category), <span class="num">0</span>), <span class="num">2</span>
+  ) <span class="kw">AS</span> z_score
+<span class="kw">FROM</span> fact_transactions t
+<span class="kw">JOIN</span> dim_date    d <span class="kw">ON</span> t.date_key    = d.date_key
+<span class="kw">JOIN</span> dim_vendor  v <span class="kw">ON</span> t.vendor_key  = v.vendor_key
+<span class="kw">JOIN</span> dim_account a <span class="kw">ON</span> t.account_key  = a.account_key
+<span class="kw">WHERE</span> d.fiscal_year = <span class="num">2025</span>
+<span class="kw">ORDER BY</span> t.amount_usd <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span>;</div>
+    <div id="window-result"></div>
+  </div>
+</div>
+
+<!-- RECURSIVE CTE -->
+<div class="panel" id="panel-cte">
+  <div class="card">
+    <div class="card-title">Recursive CTE — Approval Chain Traversal</div>
+    <button class="run-btn" onclick="runCTE()">▶ Run Query</button>
+    <div class="code"><span class="kw">WITH RECURSIVE</span> approval_chain <span class="kw">AS</span> (
+  <span class="cmt">-- Anchor: start from transactions above threshold</span>
+  <span class="kw">SELECT</span>
+    t.transaction_id,
+    t.amount_usd,
+    a.approver_id,
+    a.approver_name,
+    a.approval_level,
+    a.approved_at,
+    <span class="num">1</span> <span class="kw">AS</span> depth
+  <span class="kw">FROM</span> fact_transactions t
+  <span class="kw">JOIN</span> approval_steps a <span class="kw">ON</span> t.transaction_id = a.transaction_id
+  <span class="kw">WHERE</span> a.approval_level = <span class="num">1</span>
+    <span class="kw">AND</span> t.amount_usd > <span class="num">100000</span>
+
+  <span class="kw">UNION ALL</span>
+
+  <span class="cmt">-- Recursive: walk up the chain</span>
+  <span class="kw">SELECT</span>
+    ac.transaction_id,
+    ac.amount_usd,
+    a.approver_id,
+    a.approver_name,
+    a.approval_level,
+    a.approved_at,
+    ac.depth + <span class="num">1</span>
+  <span class="kw">FROM</span> approval_chain ac
+  <span class="kw">JOIN</span> approval_steps a
+    <span class="kw">ON</span>  ac.transaction_id = a.transaction_id
+    <span class="kw">AND</span> a.approval_level  = ac.approval_level + <span class="num">1</span>
+  <span class="kw">WHERE</span> ac.depth < <span class="num">5</span>
+)
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> approval_chain <span class="kw">ORDER BY</span> transaction_id, depth;</div>
+    <div id="cte-result"></div>
+  </div>
+</div>
+
+<!-- PIVOT -->
+<div class="panel" id="panel-pivot">
+  <div class="card">
+    <div class="card-title">Dynamic PIVOT — Spend by Category × Quarter</div>
+    <button class="run-btn" onclick="runPivot()">▶ Run Query</button>
+    <div class="code"><span class="cmt">-- Snowflake dynamic PIVOT</span>
+<span class="kw">SELECT</span> *
+<span class="kw">FROM</span> (
+  <span class="kw">SELECT</span>
+    v.risk_category,
+    <span class="str">'Q'</span> || d.fiscal_quarter <span class="kw">AS</span> quarter,
+    t.amount_usd
+  <span class="kw">FROM</span> fact_transactions t
+  <span class="kw">JOIN</span> dim_vendor v <span class="kw">ON</span> t.vendor_key  = v.vendor_key
+  <span class="kw">JOIN</span> dim_date   d <span class="kw">ON</span> t.date_key    = d.date_key
+  <span class="kw">WHERE</span> d.fiscal_year = <span class="num">2025</span>
+)
+<span class="kw">PIVOT</span> (
+  <span class="fn">SUM</span>(amount_usd)
+  <span class="kw">FOR</span> quarter <span class="kw">IN</span> (<span class="str">'Q1'</span>, <span class="str">'Q2'</span>, <span class="str">'Q3'</span>, <span class="str">'Q4'</span>)
+) <span class="kw">AS</span> pivot_table
+<span class="kw">ORDER BY</span> risk_category;</div>
+    <div id="pivot-result"></div>
+  </div>
+</div>
+
+<!-- INDEX -->
+<div class="panel" id="panel-index">
+  <div class="card">
+    <div class="card-title">Index Strategy — Query Performance Comparison</div>
+    <button class="run-btn" onclick="runIndex()">▶ Run Benchmark</button>
+    <div id="index-result">
+      <div class="code"><span class="cmt">-- Clustered index on fact table (Snowflake micro-partition strategy)</span>
+<span class="kw">ALTER TABLE</span> fact_transactions
+  <span class="kw">CLUSTER BY</span> (load_ts, account_key, vendor_key);
+
+<span class="cmt">-- Covering index for anomaly queries (SQL Server)</span>
+<span class="kw">CREATE INDEX</span> ix_fact_anomaly
+  <span class="kw">ON</span> fact_transactions (is_anomaly, account_key)
+  <span class="kw">INCLUDE</span> (transaction_id, amount_usd, z_score, load_ts);
+
+<span class="cmt">-- Partial index — only flag anomalies</span>
+<span class="kw">CREATE INDEX</span> ix_fact_anomaly_partial
+  <span class="kw">ON</span> fact_transactions (z_score <span class="kw">DESC</span>, account_key)
+  <span class="kw">WHERE</span> is_anomaly = <span class="num">1</span>;</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.remove('active'))
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'))
+  event.target.classList.add('active')
+  document.getElementById('panel-'+name).classList.add('active')
+}
+
+function runWindow(){
+  document.getElementById('window-result').innerHTML=`
+  <table class="result-table"><thead><tr><th>Transaction ID</th><th>Date</th><th>Vendor</th><th>Amount USD</th><th>Running Total</th><th>Rank</th><th>Z-Score</th></tr></thead><tbody>
+    <tr><td class="hl">TXN-48291</td><td>2025-03-14</td><td>Apex Consulting Ltd</td><td class="hl">$487,200</td><td>$487,200</td><td>1</td><td style="color:#f87171">5.82</td></tr>
+    <tr><td class="hl">TXN-31047</td><td>2025-03-11</td><td>Global Trade Partners</td><td class="hl">$312,400</td><td>$799,600</td><td>2</td><td style="color:#f87171">4.91</td></tr>
+    <tr><td class="hl">TXN-52018</td><td>2025-03-09</td><td>Meridian Logistics</td><td class="hl">$298,700</td><td>$1,098,300</td><td>3</td><td style="color:#f87171">4.67</td></tr>
+    <tr><td class="hl">TXN-29841</td><td>2025-03-08</td><td>Vertex Tech Solutions</td><td class="hl">$271,500</td><td>$1,369,800</td><td>4</td><td style="color:#f87171">4.43</td></tr>
+    <tr><td class="hl">TXN-44102</td><td>2025-03-07</td><td>Continental Supplies</td><td class="hl">$198,400</td><td>$1,568,200</td><td>5</td><td style="color:#f87171">3.97</td></tr>
+  </tbody></table>`
+}
+
+function runCTE(){
+  document.getElementById('cte-result').innerHTML=`
+  <table class="result-table"><thead><tr><th>Transaction ID</th><th>Amount USD</th><th>Approver</th><th>Level</th><th>Approved At</th><th>Depth</th></tr></thead><tbody>
+    <tr><td class="hl">TXN-48291</td><td>$487,200</td><td>Sarah Mitchell</td><td>1</td><td>2025-03-14 09:12</td><td>1</td></tr>
+    <tr><td class="hl">TXN-48291</td><td>$487,200</td><td>James Okafor</td><td>2</td><td>2025-03-14 11:04</td><td>2</td></tr>
+    <tr><td class="hl">TXN-48291</td><td>$487,200</td><td>Elena Vasquez</td><td>3</td><td>2025-03-14 14:22</td><td>3</td></tr>
+    <tr><td class="hl">TXN-31047</td><td>$312,400</td><td>Tom Brennan</td><td>1</td><td>2025-03-11 08:47</td><td>1</td></tr>
+    <tr><td class="hl">TXN-31047</td><td>$312,400</td><td>James Okafor</td><td>2</td><td>2025-03-11 10:31</td><td>2</td></tr>
+  </tbody></table>`
+}
+
+function runPivot(){
+  document.getElementById('pivot-result').innerHTML=`
+  <table class="result-table"><thead><tr><th>Risk Category</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr></thead><tbody>
+    <tr><td>High Risk</td><td class="hl">$2,841,200</td><td>$3,102,400</td><td>$2,987,100</td><td>$3,412,800</td></tr>
+    <tr><td>Medium Risk</td><td>$8,412,500</td><td class="hl">$9,187,300</td><td>$8,741,200</td><td>$9,012,400</td></tr>
+    <tr><td>Low Risk</td><td>$24,187,400</td><td>$25,412,100</td><td>$23,987,600</td><td class="hl">$26,841,200</td></tr>
+    <tr><td>Standard</td><td>$41,287,300</td><td>$43,812,100</td><td>$42,187,400</td><td>$44,712,800</td></tr>
+  </tbody></table>`
+}
+
+function runIndex(){
+  const rows=[
+    {label:'Full table scan (no index)',ms:4820,color:'#f87171',pct:100},
+    {label:'Non-covering index',ms:1240,color:'#fbbf24',pct:26},
+    {label:'Covering index (INCLUDE)',ms:187,color:'#22d3ee',pct:4},
+    {label:'Partial index (anomalies only)',ms:43,color:'#34d399',pct:1},
+    {label:'Snowflake micro-partition pruning',ms:28,color:'#a78bfa',pct:0.6},
+  ]
+  const el=document.getElementById('index-result')
+  el.innerHTML='<div style="margin-top:.75rem">'+rows.map(r=>`
+    <div class="perf-row">
+      <div class="perf-label">${r.label}</div>
+      <div class="perf-bar-wrap"><div class="perf-bar" style="width:0%;background:${r.color}" data-pct="${r.pct}"></div></div>
+      <div class="perf-ms">${r.ms}ms</div>
+    </div>`).join('')+'</div>'
+  setTimeout(()=>{
+    document.querySelectorAll('.perf-bar').forEach(b=>{
+      b.style.width=b.dataset.pct+'%'
+    })
+  },50)
+}
+</script>
+</body>
+</html>

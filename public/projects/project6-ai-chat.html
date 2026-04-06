@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Chat with Your Data — AI Assistant</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#050609;color:#e8edf5;padding:2rem 1.5rem}
+h1{font-size:1.5rem;font-weight:800;color:#a78bfa;margin-bottom:.25rem}
+.sub{color:#7a8496;font-size:.85rem;margin-bottom:1.5rem}
+
+.layout{display:grid;grid-template-columns:260px 1fr;gap:1.25rem;align-items:start}
+.card{background:#13151d;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1.25rem}
+.card-title{font-size:.78rem;color:#7a8496;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem}
+
+/* schema panel */
+.schema-table{margin-bottom:.75rem}
+.schema-name{font-size:.78rem;font-weight:700;color:#22d3ee;margin-bottom:.35rem;display:flex;align-items:center;gap:.4rem}
+.schema-col{font-size:.68rem;color:#7a8496;padding:.15rem 0 .15rem .8rem;font-family:'Courier New',monospace}
+.schema-col span{color:#a78bfa}
+
+/* chat */
+.chat-area{height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem;padding-right:.25rem}
+.chat-area::-webkit-scrollbar{width:4px}
+.chat-area::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+
+.msg{display:flex;gap:.7rem;align-items:flex-start;max-width:100%}
+.msg.user{flex-direction:row-reverse}
+.avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
+.avatar.ai{background:rgba(167,139,250,.2);border:1px solid rgba(167,139,250,.3)}
+.avatar.user{background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.2)}
+.bubble{background:#1a1d27;border-radius:10px;padding:.65rem .9rem;font-size:.84rem;line-height:1.6;max-width:85%}
+.msg.user .bubble{background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.2)}
+
+/* SQL block inside bubble */
+.sql-block{background:#0c0e14;border-radius:6px;padding:.65rem .8rem;font-family:'Courier New',monospace;font-size:.72rem;line-height:1.65;margin:.5rem 0;border-left:2px solid #a78bfa}
+.kw{color:#a78bfa}.fn{color:#22d3ee}.str{color:#34d399}.num{color:#fbbf24}
+
+/* result table inside bubble */
+.result-tbl{width:100%;border-collapse:collapse;font-size:.75rem;margin-top:.5rem}
+.result-tbl th{text-align:left;padding:.3rem .5rem;color:#7a8496;border-bottom:1px solid rgba(255,255,255,.08);font-weight:500}
+.result-tbl td{padding:.3rem .5rem;border-bottom:1px solid rgba(255,255,255,.04)}
+.hl{color:#22d3ee;font-weight:600}
+
+/* mini bar chart in bubble */
+.mini-chart{display:flex;align-items:flex-end;gap:3px;height:60px;margin-top:.6rem}
+.mbar{flex:1;border-radius:2px 2px 0 0;min-height:3px}
+.mbar-label{font-size:.6rem;color:#7a8496;text-align:center;margin-top:2px}
+
+/* input */
+.input-wrap{display:flex;gap:.6rem}
+.chat-input{flex:1;background:#1a1d27;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.65rem .9rem;color:#e8edf5;font-size:.88rem;font-family:inherit;transition:border-color .2s}
+.chat-input:focus{outline:none;border-color:#a78bfa}
+.send-btn{background:#a78bfa;color:#050609;border:none;border-radius:8px;padding:.65rem 1rem;font-weight:700;cursor:pointer;font-size:.88rem;transition:all .2s;white-space:nowrap}
+.send-btn:hover{background:#c4b5fd}
+.send-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.suggestions{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.75rem}
+.sug{font-size:.72rem;padding:.25rem .65rem;border-radius:99px;border:1px solid rgba(167,139,250,.25);color:#a78bfa;background:rgba(167,139,250,.06);cursor:pointer;transition:all .2s}
+.sug:hover{background:rgba(167,139,250,.15);border-color:#a78bfa}
+
+.typing{display:flex;gap:4px;align-items:center;padding:.65rem .9rem}
+.typing span{width:6px;height:6px;background:#a78bfa;border-radius:50%;animation:bounce .8s infinite}
+.typing span:nth-child(2){animation-delay:.15s}
+.typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+@media(max-width:700px){.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>🤖 Chat with Your Data — AI Assistant</h1>
+<p class="sub">Natural language → SQL → Results · Powered by Azure OpenAI · Simulates ExxonMobil Global Audit AI system</p>
+
+<div class="layout">
+
+  <!-- Schema panel -->
+  <div class="card">
+    <div class="card-title">📐 Connected Schema</div>
+    <div class="schema-table">
+      <div class="schema-name">📊 fact_transactions</div>
+      <div class="schema-col">transaction_id <span>BIGINT</span></div>
+      <div class="schema-col">amount_usd <span>DECIMAL</span></div>
+      <div class="schema-col">is_anomaly <span>BOOLEAN</span></div>
+      <div class="schema-col">z_score <span>FLOAT</span></div>
+      <div class="schema-col">gl_category <span>VARCHAR</span></div>
+      <div class="schema-col">vendor_key <span>INT FK</span></div>
+      <div class="schema-col">date_key <span>INT FK</span></div>
+    </div>
+    <div class="schema-table">
+      <div class="schema-name">🏢 dim_vendor</div>
+      <div class="schema-col">vendor_key <span>INT PK</span></div>
+      <div class="schema-col">vendor_name <span>VARCHAR</span></div>
+      <div class="schema-col">risk_category <span>VARCHAR</span></div>
+      <div class="schema-col">country <span>VARCHAR</span></div>
+    </div>
+    <div class="schema-table">
+      <div class="schema-name">📅 dim_date</div>
+      <div class="schema-col">date_key <span>INT PK</span></div>
+      <div class="schema-col">full_date <span>DATE</span></div>
+      <div class="schema-col">fiscal_quarter <span>INT</span></div>
+      <div class="schema-col">fiscal_year <span>INT</span></div>
+    </div>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.07)">
+      <div style="font-size:.7rem;color:#7a8496;margin-bottom:.4rem">AI Model</div>
+      <div style="font-size:.78rem;color:#a78bfa">Azure OpenAI GPT-4o</div>
+      <div style="font-size:.68rem;color:#7a8496;margin-top:.2rem">azure.openai.com</div>
+    </div>
+  </div>
+
+  <!-- Chat panel -->
+  <div class="card">
+    <div class="card-title">💬 Ask Your Data</div>
+
+    <div class="suggestions" id="suggestions">
+      <div class="sug" onclick="askSuggestion(this)">Show top 5 anomalies this quarter</div>
+      <div class="sug" onclick="askSuggestion(this)">What is total spend by vendor risk category?</div>
+      <div class="sug" onclick="askSuggestion(this)">Which vendors have the highest z-scores?</div>
+      <div class="sug" onclick="askSuggestion(this)">Compare Q1 vs Q2 spend</div>
+    </div>
+
+    <div class="chat-area" id="chat"></div>
+
+    <div class="input-wrap">
+      <input class="chat-input" id="chat-input" type="text" placeholder="Ask anything about your audit data..." onkeydown="if(event.key==='Enter')sendMessage()"/>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">Send ↗</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const RESPONSES = {
+  'show top 5 anomalies this quarter': {
+    sql: `<span class="kw">SELECT</span> t.transaction_id, v.vendor_name, t.amount_usd, t.z_score\n<span class="kw">FROM</span> fact_transactions t\n<span class="kw">JOIN</span> dim_vendor v <span class="kw">ON</span> t.vendor_key = v.vendor_key\n<span class="kw">JOIN</span> dim_date   d <span class="kw">ON</span> t.date_key   = d.date_key\n<span class="kw">WHERE</span> t.is_anomaly = <span class="num">1</span>\n  <span class="kw">AND</span> d.fiscal_quarter = <span class="num">1</span>\n<span class="kw">ORDER BY</span> t.z_score <span class="kw">DESC</span>\n<span class="kw">LIMIT</span> <span class="num">5</span>;`,
+    table: `<table class="result-tbl"><thead><tr><th>Transaction</th><th>Vendor</th><th>Amount</th><th>Z-Score</th></tr></thead><tbody>
+      <tr><td class="hl">TXN-48291</td><td>Apex Consulting Ltd</td><td style="color:#f87171">$487,200</td><td style="color:#f87171">5.82</td></tr>
+      <tr><td class="hl">TXN-31047</td><td>Global Trade Partners</td><td style="color:#f87171">$312,400</td><td style="color:#f87171">4.91</td></tr>
+      <tr><td class="hl">TXN-52018</td><td>Meridian Logistics</td><td style="color:#fbbf24">$298,700</td><td style="color:#fbbf24">4.67</td></tr>
+      <tr><td class="hl">TXN-29841</td><td>Vertex Tech Solutions</td><td style="color:#fbbf24">$271,500</td><td style="color:#fbbf24">4.43</td></tr>
+      <tr><td class="hl">TXN-44102</td><td>Continental Supplies</td><td style="color:#fbbf24">$198,400</td><td style="color:#fbbf24">3.97</td></tr>
+    </tbody></table>`,
+    text: 'Here are the top 5 anomalous transactions in Q1 2025, ranked by Z-score. The highest is TXN-48291 with Apex Consulting at $487,200 (z=5.82) — significantly above the 3.0 threshold. I recommend prioritising these 5 for manual audit review.',
+  },
+  'what is total spend by vendor risk category?': {
+    sql: `<span class="kw">SELECT</span> v.risk_category,\n  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> transactions,\n  <span class="fn">SUM</span>(t.amount_usd) <span class="kw">AS</span> total_spend,\n  <span class="fn">AVG</span>(t.amount_usd) <span class="kw">AS</span> avg_transaction\n<span class="kw">FROM</span> fact_transactions t\n<span class="kw">JOIN</span> dim_vendor v <span class="kw">ON</span> t.vendor_key = v.vendor_key\n<span class="kw">GROUP BY</span> v.risk_category\n<span class="kw">ORDER BY</span> total_spend <span class="kw">DESC</span>;`,
+    table: `<table class="result-tbl"><thead><tr><th>Risk Category</th><th>Transactions</th><th>Total Spend</th><th>Avg Txn</th></tr></thead><tbody>
+      <tr><td>Standard</td><td>7,842</td><td class="hl">$41.3M</td><td>$5,267</td></tr>
+      <tr><td>Low Risk</td><td>3,102</td><td class="hl">$24.2M</td><td>$7,802</td></tr>
+      <tr><td>Medium Risk</td><td>1,647</td><td style="color:#fbbf24">$8.4M</td><td>$5,101</td></tr>
+      <tr><td>High Risk</td><td>256</td><td style="color:#f87171">$2.8M</td><td>$10,938</td></tr>
+    </tbody></table>`,
+    text: 'High-risk vendors represent only 2% of transaction volume but $2.8M in spend with the highest average transaction value ($10,938). This concentration warrants closer monitoring. Medium-risk vendors also show elevated average transaction values.',
+    chart: ['Standard','Low Risk','Med Risk','High Risk'],
+    chartVals: [41.3, 24.2, 8.4, 2.8],
+    chartColors: ['#22d3ee','#22d3ee','#fbbf24','#f87171'],
+  },
+  'which vendors have the highest z-scores?': {
+    sql: `<span class="kw">SELECT</span> v.vendor_name, v.risk_category,\n  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> anomaly_count,\n  <span class="fn">MAX</span>(t.z_score) <span class="kw">AS</span> max_z,\n  <span class="fn">SUM</span>(t.amount_usd) <span class="kw">AS</span> total_flagged\n<span class="kw">FROM</span> fact_transactions t\n<span class="kw">JOIN</span> dim_vendor v <span class="kw">ON</span> t.vendor_key = v.vendor_key\n<span class="kw">WHERE</span> t.is_anomaly = <span class="num">1</span>\n<span class="kw">GROUP BY</span> v.vendor_name, v.risk_category\n<span class="kw">ORDER BY</span> max_z <span class="kw">DESC</span>\n<span class="kw">LIMIT</span> <span class="num">5</span>;`,
+    table: `<table class="result-tbl"><thead><tr><th>Vendor</th><th>Risk</th><th>Anomalies</th><th>Max Z-Score</th><th>Total Flagged</th></tr></thead><tbody>
+      <tr><td>Apex Consulting Ltd</td><td style="color:#f87171">High</td><td>3</td><td style="color:#f87171">5.82</td><td>$891,400</td></tr>
+      <tr><td>Global Trade Partners</td><td style="color:#f87171">High</td><td>2</td><td style="color:#f87171">4.91</td><td>$612,700</td></tr>
+      <tr><td>Meridian Logistics</td><td style="color:#fbbf24">Medium</td><td>1</td><td style="color:#fbbf24">4.67</td><td>$298,700</td></tr>
+      <tr><td>Vertex Tech Solutions</td><td style="color:#fbbf24">Medium</td><td>1</td><td style="color:#fbbf24">4.43</td><td>$271,500</td></tr>
+      <tr><td>Continental Supplies</td><td style="color:#fbbf24">Medium</td><td>1</td><td style="color:#fbbf24">3.97</td><td>$198,400</td></tr>
+    </tbody></table>`,
+    text: 'Apex Consulting Ltd is the highest-risk vendor with 3 anomalous transactions totalling $891,400 and a peak Z-score of 5.82. Combined with Global Trade Partners, these two vendors account for over $1.5M in flagged spend and should be escalated for full audit review.',
+  },
+  'compare q1 vs q2 spend': {
+    sql: `<span class="kw">SELECT</span>\n  d.fiscal_quarter,\n  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> transactions,\n  <span class="fn">SUM</span>(t.amount_usd) <span class="kw">AS</span> total_spend,\n  <span class="fn">SUM</span>(<span class="kw">CASE WHEN</span> t.is_anomaly <span class="kw">THEN</span> t.amount_usd <span class="kw">ELSE</span> <span class="num">0</span> <span class="kw">END</span>) <span class="kw">AS</span> flagged_spend\n<span class="kw">FROM</span> fact_transactions t\n<span class="kw">JOIN</span> dim_date d <span class="kw">ON</span> t.date_key = d.date_key\n<span class="kw">WHERE</span> d.fiscal_year = <span class="num">2025</span>\n  <span class="kw">AND</span> d.fiscal_quarter <span class="kw">IN</span> (<span class="num">1</span>,<span class="num">2</span>)\n<span class="kw">GROUP BY</span> d.fiscal_quarter;`,
+    table: `<table class="result-tbl"><thead><tr><th>Quarter</th><th>Transactions</th><th>Total Spend</th><th>Flagged Spend</th><th>Flag Rate</th></tr></thead><tbody>
+      <tr><td class="hl">Q1 2025</td><td>6,241</td><td>$38.4M</td><td style="color:#f87171">$2.1M</td><td style="color:#f87171">5.5%</td></tr>
+      <tr><td class="hl">Q2 2025</td><td>6,606</td><td>$41.2M</td><td style="color:#fbbf24">$2.1M</td><td style="color:#fbbf24">5.1%</td></tr>
+    </tbody></table>`,
+    text: 'Q2 spend increased 7.3% vs Q1 ($41.2M vs $38.4M) with more transactions (6,606 vs 6,241). The flagged spend amount is similar ($2.1M both quarters) but the flag rate improved slightly from 5.5% to 5.1%, suggesting the anomaly controls are working effectively as volume grows.',
+    chart: ['Q1 Spend','Q2 Spend','Q1 Flagged','Q2 Flagged'],
+    chartVals: [38.4, 41.2, 2.1, 2.1],
+    chartColors: ['#22d3ee','#a78bfa','#f87171','#fbbf24'],
+  }
+}
+
+function normalise(q){ return q.toLowerCase().replace(/[?!.]/g,'').trim() }
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input')
+  const q = input.value.trim()
+  if(!q) return
+  input.value = ''
+  document.getElementById('send-btn').disabled = true
+  document.getElementById('suggestions').style.display = 'none'
+
+  addUserMsg(q)
+  const typingId = addTyping()
+  await sleep(900 + Math.random()*600)
+  removeTyping(typingId)
+
+  const key = normalise(q)
+  const match = Object.keys(RESPONSES).find(k => key.includes(k) || k.includes(key.split(' ').slice(0,3).join(' ')))
+  const resp = match ? RESPONSES[match] : null
+
+  if(resp) {
+    addAIMsg(resp)
+  } else {
+    addAIMsg({
+      sql: `<span class="kw">SELECT</span> * <span class="kw">FROM</span> fact_transactions\n<span class="kw">WHERE</span> <span class="str">'${q.slice(0,40)}'</span> <span class="cmt">-- your query</span>\n<span class="kw">LIMIT</span> <span class="num">10</span>;`,
+      text: `I understood your question about "${q}". In a live environment connected to your Snowflake/Azure SQL database, I would generate the exact SQL, execute it, and return results with a chart. Try one of the suggested questions above to see full demo responses.`,
+    })
+  }
+  document.getElementById('send-btn').disabled = false
+}
+
+function addUserMsg(text) {
+  const chat = document.getElementById('chat')
+  chat.innerHTML += `<div class="msg user"><div class="avatar user">👤</div><div class="bubble">${text}</div></div>`
+  chat.scrollTop = chat.scrollHeight
+}
+
+function addTyping() {
+  const chat = document.getElementById('chat')
+  const id = 'typing-'+Date.now()
+  chat.innerHTML += `<div class="msg" id="${id}"><div class="avatar ai">🤖</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div></div>`
+  chat.scrollTop = chat.scrollHeight
+  return id
+}
+
+function removeTyping(id){ document.getElementById(id)?.remove() }
+
+function addAIMsg(resp) {
+  const chat = document.getElementById('chat')
+  let chartHtml = ''
+  if(resp.chart) {
+    const max = Math.max(...resp.chartVals)
+    chartHtml = `<div class="mini-chart">${resp.chartVals.map((v,i)=>`<div style="flex:1"><div class="mbar" style="height:${Math.round((v/max)*100)}%;background:${resp.chartColors[i]}"></div><div class="mbar-label">${resp.chart[i]}</div></div>`).join('')}</div>`
+  }
+  chat.innerHTML += `<div class="msg"><div class="avatar ai">🤖</div><div class="bubble">
+    <div style="font-size:.72rem;color:#a78bfa;margin-bottom:.4rem">Generated SQL:</div>
+    <div class="sql-block">${resp.sql}</div>
+    ${resp.table||''}
+    ${chartHtml}
+    <div style="margin-top:.5rem;font-size:.82rem;line-height:1.65">${resp.text}</div>
+  </div></div>`
+  chat.scrollTop = chat.scrollHeight
+}
+
+function askSuggestion(el) {
+  document.getElementById('chat-input').value = el.textContent
+  sendMessage()
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)) }
+
+// Welcome message
+addAIMsg({
+  sql: `<span class="kw">SELECT</span> <span class="fn">COUNT</span>(*) <span class="kw">AS</span> total_transactions,\n  <span class="fn">SUM</span>(amount_usd) <span class="kw">AS</span> total_spend\n<span class="kw">FROM</span> fact_transactions;`,
+  table: `<table class="result-tbl"><thead><tr><th>Total Transactions</th><th>Total Spend</th><th>Anomalies Flagged</th></tr></thead><tbody><tr><td class="hl">12,847</td><td class="hl">$79.6M</td><td style="color:#f87171">23</td></tr></tbody></table>`,
+  text: 'Connected to your audit database. I can see 12,847 transactions totalling $79.6M with 23 flagged anomalies. Ask me anything in plain English — I\'ll generate the SQL and show you the results.',
+})
+</script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CI/CD Pipeline Visualizer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#050609;color:#e8edf5;padding:2rem 1.5rem}
+h1{font-size:1.5rem;font-weight:800;color:#fbbf24;margin-bottom:.25rem}
+.sub{color:#7a8496;font-size:.85rem;margin-bottom:2rem}
+.card{background:#13151d;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.card-title{font-size:.78rem;color:#7a8496;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem}
+.btns{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.btn{padding:.5rem 1.2rem;border-radius:8px;border:none;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-amber{background:#fbbf24;color:#050609}.btn-amber:hover{background:#fde68a}
+.btn-red{background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.25)}.btn-red:hover{background:rgba(248,113,113,.25)}
+.btn-gray{background:transparent;color:#7a8496;border:1px solid rgba(255,255,255,.1)}.btn-gray:hover{border-color:#fbbf24;color:#fbbf24}
+
+/* pipeline stages */
+.pipeline{display:flex;align-items:center;gap:.25rem;flex-wrap:wrap;gap:.75rem;margin-bottom:1.5rem}
+.stage{background:#0c0e14;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.75rem 1rem;min-width:110px;text-align:center;transition:all .3s;position:relative}
+.stage-icon{font-size:1.3rem;margin-bottom:.3rem}
+.stage-name{font-size:.75rem;font-weight:600}
+.stage-time{font-size:.65rem;color:#7a8496;margin-top:.2rem}
+.stage.waiting{border-color:rgba(255,255,255,.08)}
+.stage.running{border-color:#fbbf24;background:rgba(251,191,36,.06);animation:stagePulse 1s infinite}
+.stage.done{border-color:#34d399;background:rgba(52,211,153,.06)}
+.stage.failed{border-color:#f87171;background:rgba(248,113,113,.06)}
+.stage .status-dot{position:absolute;top:6px;right:8px;width:7px;height:7px;border-radius:50%}
+.stage.running .status-dot{background:#fbbf24}
+.stage.done .status-dot{background:#34d399}
+.stage.failed .status-dot{background:#f87171}
+@keyframes stagePulse{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.3)}50%{box-shadow:0 0 0 6px rgba(251,191,36,0)}}
+.arrow{color:#7a8496;font-size:1.2rem;flex-shrink:0}
+
+/* log */
+.log{background:#0a0c10;border-radius:8px;padding:1rem;height:200px;overflow-y:auto;font-family:'Courier New',monospace;font-size:.74rem;line-height:1.7}
+.log-line{margin-bottom:0}
+.c-blue{color:#22d3ee}.c-green{color:#34d399}.c-yellow{color:#fbbf24}.c-red{color:#f87171}.c-gray{color:#7a8496}.c-white{color:#e8edf5}
+
+/* summary */
+.summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-bottom:1.25rem}
+.sum-box{background:#0c0e14;border-radius:8px;padding:.8rem 1rem}
+.sum-label{font-size:.68rem;color:#7a8496;margin-bottom:.25rem}
+.sum-val{font-size:1.1rem;font-weight:700}
+
+/* yaml */
+.yaml{background:#0c0e14;border-radius:8px;padding:1rem;font-family:'Courier New',monospace;font-size:.73rem;line-height:1.75;overflow-x:auto}
+.y-key{color:#22d3ee}.y-val{color:#34d399}.y-cmt{color:#7a8496;font-style:italic}.y-str{color:#fbbf24}
+</style>
+</head>
+<body>
+<h1>🚀 CI/CD Pipeline Visualizer</h1>
+<p class="sub">GitHub Actions · Azure DevOps · OpenShift deploy · Simulates ExxonMobil Analytics deployment pipeline</p>
+
+<div class="btns">
+  <button class="btn btn-amber" onclick="runSuccess()">▶ Run — Success</button>
+  <button class="btn btn-red"   onclick="runFail()">⚡ Run — Inject Failure</button>
+  <button class="btn btn-gray"  onclick="resetAll()">↺ Reset</button>
+</div>
+
+<div class="summary">
+  <div class="sum-box"><div class="sum-label">Status</div><div class="sum-val" id="s-status" style="color:#7a8496">Idle</div></div>
+  <div class="sum-box"><div class="sum-label">Branch</div><div class="sum-val" style="color:#22d3ee">main</div></div>
+  <div class="sum-box"><div class="sum-label">Triggered by</div><div class="sum-val" style="font-size:.85rem;color:#e8edf5">fahim push</div></div>
+  <div class="sum-box"><div class="sum-label">Duration</div><div class="sum-val" id="s-dur" style="color:#fbbf24">—</div></div>
+  <div class="sum-box"><div class="sum-label">Commit</div><div class="sum-val" style="font-size:.8rem;color:#a78bfa;font-family:'Courier New',monospace">a3f7d2c</div></div>
+</div>
+
+<div class="card">
+  <div class="card-title">Pipeline Stages</div>
+  <div class="pipeline" id="pipeline"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">Live Log</div>
+  <div class="log" id="log">
+    <div class="log-line c-gray"># Waiting for trigger...</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">GitHub Actions Workflow (deploy.yml)</div>
+  <div class="yaml">
+<span class="y-cmt"># .github/workflows/deploy.yml</span>
+<span class="y-key">name:</span> <span class="y-val">Deploy Analytics Pipeline</span>
+<span class="y-key">on:</span>
+  <span class="y-key">push:</span>
+    <span class="y-key">branches:</span> [<span class="y-str">main</span>]
+<span class="y-key">jobs:</span>
+  <span class="y-key">build-and-deploy:</span>
+    <span class="y-key">runs-on:</span> <span class="y-val">ubuntu-latest</span>
+    <span class="y-key">steps:</span>
+      - <span class="y-key">uses:</span> <span class="y-val">actions/checkout@v4</span>
+      - <span class="y-key">name:</span> <span class="y-val">Setup Python</span>
+        <span class="y-key">uses:</span> <span class="y-val">actions/setup-python@v4</span>
+        <span class="y-key">with:</span> <span class="y-key">python-version:</span> <span class="y-str">'3.11'</span>
+      - <span class="y-key">name:</span> <span class="y-val">Lint</span>
+        <span class="y-key">run:</span> <span class="y-val">flake8 . --max-line-length=120</span>
+      - <span class="y-key">name:</span> <span class="y-val">Test</span>
+        <span class="y-key">run:</span> <span class="y-val">pytest tests/ --cov=src --cov-report=xml</span>
+      - <span class="y-key">name:</span> <span class="y-val">Build Docker image</span>
+        <span class="y-key">run:</span> <span class="y-val">docker build -t analytics-pipeline:${{ github.sha }} .</span>
+      - <span class="y-key">name:</span> <span class="y-val">Push to ACR</span>
+        <span class="y-key">run:</span> <span class="y-val">docker push $ACR_REGISTRY/analytics-pipeline:${{ github.sha }}</span>
+      - <span class="y-key">name:</span> <span class="y-val">Deploy to OpenShift</span>
+        <span class="y-key">run:</span> <span class="y-val">oc rollout latest dc/analytics-pipeline -n audit-prod</span>
+  </div>
+</div>
+
+<script>
+const STAGES = [
+  {id:'checkout', name:'Checkout', icon:'📥'},
+  {id:'lint',     name:'Lint',     icon:'🔍'},
+  {id:'test',     name:'Test',     icon:'🧪'},
+  {id:'build',    name:'Build',    icon:'🔨'},
+  {id:'push',     name:'Push ACR', icon:'📦'},
+  {id:'deploy',   name:'Deploy',   icon:'🚀'},
+]
+
+const SUCCESS_LOGS = [
+  ['blue',  'Run triggered by push to main (commit a3f7d2c)'],
+  ['gray',  ''],
+  ['yellow','[Checkout] Checking out repository...'],
+  ['green', '[Checkout] ✓ Code checked out in 1.2s'],
+  ['gray',  ''],
+  ['yellow','[Lint] Running flake8 --max-line-length=120...'],
+  ['white', 'Checking src/pipeline/extract.py'],
+  ['white', 'Checking src/pipeline/transform.py'],
+  ['white', 'Checking src/pipeline/load.py'],
+  ['green', '[Lint] ✓ No linting errors — 0 warnings'],
+  ['gray',  ''],
+  ['yellow','[Test] Running pytest tests/ --cov=src...'],
+  ['white', 'tests/test_extract.py ........ (8 passed)'],
+  ['white', 'tests/test_transform.py ...... (6 passed)'],
+  ['white', 'tests/test_anomaly.py ....... (7 passed)'],
+  ['white', 'tests/test_load.py .......... (5 passed)'],
+  ['green', '[Test] ✓ 26 tests passed, 0 failed — Coverage: 87.4%'],
+  ['gray',  ''],
+  ['yellow','[Build] Building Docker image analytics-pipeline:a3f7d2c...'],
+  ['white', 'Step 1/8 : FROM python:3.11-slim'],
+  ['white', 'Step 2/8 : COPY requirements.txt .'],
+  ['white', 'Step 5/8 : RUN pip install -r requirements.txt'],
+  ['white', 'Step 8/8 : CMD ["python", "-m", "src.main"]'],
+  ['green', '[Build] ✓ Image built (312MB) in 48s'],
+  ['gray',  ''],
+  ['yellow','[Push] Pushing to Azure Container Registry...'],
+  ['white', 'Pushing layer sha256:a4f7... done'],
+  ['white', 'Pushing layer sha256:b8c2... done'],
+  ['green', '[Push] ✓ Image pushed to acr.azurecr.io/analytics-pipeline:a3f7d2c'],
+  ['gray',  ''],
+  ['yellow','[Deploy] Rolling out to OpenShift audit-prod namespace...'],
+  ['white', 'oc rollout latest dc/analytics-pipeline -n audit-prod'],
+  ['white', 'Waiting for rollout to complete...'],
+  ['white', 'analytics-pipeline-47: 1/1 pods running'],
+  ['green', '[Deploy] ✓ Deployed successfully — 0 errors, 0 downtime'],
+  ['gray',  ''],
+  ['green', '🎉 Pipeline complete — 4m 12s total'],
+]
+
+const FAIL_LOGS = [
+  ['blue',  'Run triggered by push to main (commit a3f7d2c)'],
+  ['gray',  ''],
+  ['yellow','[Checkout] Checking out repository...'],
+  ['green', '[Checkout] ✓ Code checked out in 1.2s'],
+  ['gray',  ''],
+  ['yellow','[Lint] Running flake8 --max-line-length=120...'],
+  ['white', 'Checking src/pipeline/transform.py'],
+  ['red',   'src/pipeline/transform.py:84:5: E501 line too long (127 > 120 characters)'],
+  ['red',   'src/pipeline/transform.py:121:1: W291 trailing whitespace'],
+  ['red',   '[Lint] ✗ FAILED — 2 linting errors'],
+  ['red',   ''],
+  ['red',   '❌ Pipeline aborted at LINT stage'],
+  ['yellow','Sending notification to Slack #deploy-alerts...'],
+  ['yellow','⚠ Deployment blocked — fix linting errors and re-push'],
+]
+
+let running = false, startTime = null, timerInterval = null
+
+function buildPipeline(states={}) {
+  const el = document.getElementById('pipeline')
+  el.innerHTML = STAGES.map((s,i) => `
+    <div class="stage ${states[s.id]||'waiting'}" id="stg-${s.id}">
+      <div class="stage-icon">${s.icon}</div>
+      <div class="stage-name">${s.name}</div>
+      <div class="stage-time" id="time-${s.id}">${states[s.id+'_time']||''}</div>
+      ${states[s.id] && states[s.id]!=='waiting' ? '<div class="status-dot"></div>' : ''}
+    </div>
+    ${i<STAGES.length-1?'<div class="arrow">→</div>':''}
+  `).join('')
+}
+
+function log(text, cls) {
+  const el = document.getElementById('log')
+  const clsMap = {blue:'c-blue',green:'c-green',yellow:'c-yellow',red:'c-red',gray:'c-gray',white:'c-white'}
+  el.innerHTML += `<div class="log-line ${clsMap[cls]||''}">${text}</div>`
+  el.scrollTop = el.scrollHeight
+}
+
+const STAGE_TIMES_SUCCESS = {checkout:1.2, lint:8.4, test:42.1, build:48.3, push:22.7, deploy:35.8}
+const STAGE_TIMES_FAIL    = {checkout:1.2, lint:4.1}
+
+async function runSuccess() {
+  if(running) return
+  running = true
+  document.getElementById('log').innerHTML = ''
+  const states = {}
+  startTime = Date.now()
+  document.getElementById('s-status').textContent = 'Running'
+  document.getElementById('s-status').style.color = '#fbbf24'
+
+  let logIdx = 0
+  for(let si=0; si<STAGES.length; si++) {
+    const s = STAGES[si]
+    states[s.id] = 'running'
+    buildPipeline(states)
+    const stageLines = SUCCESS_LOGS.slice(logIdx)
+    for(const [type, line] of SUCCESS_LOGS.slice(logIdx)) {
+      log(line, type)
+      logIdx++
+      await sleep(line.startsWith('[') ? 80 : 35)
+      if(line.startsWith('['+capFirst(s.name)) && line.includes('✓')) { await sleep(100); break }
+    }
+    states[s.id] = 'done'
+    states[s.id+'_time'] = STAGE_TIMES_SUCCESS[s.id]+'s'
+    buildPipeline(states)
+    await sleep(150)
+  }
+  const dur = ((Date.now()-startTime)/1000).toFixed(0)
+  document.getElementById('s-status').textContent = '✓ Success'
+  document.getElementById('s-status').style.color = '#34d399'
+  document.getElementById('s-dur').textContent = '4m 12s'
+  running = false
+}
+
+async function runFail() {
+  if(running) return
+  running = true
+  document.getElementById('log').innerHTML = ''
+  const states = {}
+  document.getElementById('s-status').textContent = 'Running'
+  document.getElementById('s-status').style.color = '#fbbf24'
+
+  states['checkout'] = 'running'; buildPipeline(states); await sleep(300)
+  log(FAIL_LOGS[0][1],'blue'); log('','gray')
+  log('[Checkout] Checking out repository...','yellow'); await sleep(400)
+  log('[Checkout] ✓ Code checked out in 1.2s','green')
+  states['checkout'] = 'done'; states['checkout_time'] = '1.2s'; buildPipeline(states)
+  await sleep(300)
+
+  states['lint'] = 'running'; buildPipeline(states); await sleep(300)
+  log('','gray'); log('[Lint] Running flake8 --max-line-length=120...','yellow'); await sleep(400)
+  log('Checking src/pipeline/transform.py','white'); await sleep(500)
+  log('src/pipeline/transform.py:84:5: E501 line too long (127 > 120 characters)','red'); await sleep(200)
+  log('src/pipeline/transform.py:121:1: W291 trailing whitespace','red'); await sleep(200)
+  log('[Lint] ✗ FAILED — 2 linting errors','red')
+  states['lint'] = 'failed'; buildPipeline(states)
+  await sleep(300)
+  log('','gray'); log('❌ Pipeline aborted at LINT stage','red'); await sleep(200)
+  log('Sending notification to Slack #deploy-alerts...','yellow'); await sleep(300)
+  log('⚠ Deployment blocked — fix linting errors and re-push','yellow')
+
+  document.getElementById('s-status').textContent = '✗ Failed'
+  document.getElementById('s-status').style.color = '#f87171'
+  document.getElementById('s-dur').textContent = '0m 07s'
+  running = false
+}
+
+function resetAll() {
+  running = false
+  buildPipeline()
+  document.getElementById('log').innerHTML = '<div class="log-line c-gray"># Waiting for trigger...</div>'
+  document.getElementById('s-status').textContent = 'Idle'
+  document.getElementById('s-status').style.color = '#7a8496'
+  document.getElementById('s-dur').textContent = '—'
+}
+
+function capFirst(s){ return s.charAt(0).toUpperCase()+s.slice(1) }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)) }
+
+buildPipeline()
+</script>
+</body>
+</html>
